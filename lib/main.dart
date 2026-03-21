@@ -12,13 +12,24 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Helmet App',
       theme: ThemeData(
-
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        
+        brightness: Brightness.dark,
+        fontFamily: 'Poppins',
         scaffoldBackgroundColor: Colors.black,
-
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark),
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: Colors.white,),
+          bodyLarge: TextStyle(color: Colors.white),
+          headlineMedium: TextStyle(color: Colors.white),
+          headlineLarge: TextStyle(color: Colors.white),
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          labelStyle: TextStyle(color: Colors.white),
+          hintStyle: TextStyle(color: Colors.white70),
+        ),
       ),
       home: const LoginScreen(),
     );

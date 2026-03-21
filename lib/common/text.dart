@@ -12,8 +12,10 @@ class TTexts {
   static const String onboardingSubtitle3 = "Control everything efficiently";
 
   // Authentication
-  static const String loginTitle = "Welcome Back.";
+  static const String loginTitle = "Login";
   static const String loginSubtitle = "Sign in to continue";
+  static const String signupTitle = "Create Account";
+  static const String signupSubtitle = "Join us and explore the features";
 
   static const String email = "Email";
   static const String password = "Password";
