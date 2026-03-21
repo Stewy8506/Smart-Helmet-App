@@ -53,7 +53,7 @@ Built alongside a custom helmet powered by **ESP32 & ESP32-S3**.
 
 - **Frontend:** Flutter  
 - **Communication:** Bluetooth Classic + BLE  
-- **MCU:** ESP32 + ESP32-S3  
+- **MCU:** ESP32 + ESP32-S3(x2) + STM32F401CCU6 (Optional)
 - **Audio Processing:** DSP  
 - **Architecture:** Modular Flutter  
 
