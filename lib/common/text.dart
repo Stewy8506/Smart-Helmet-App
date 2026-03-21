@@ -32,4 +32,7 @@ class TTexts {
   static const String skip = "Skip";
   static const String next = "Next";
   static const String done = "Done";
+
+  //Signature
+  static const String signatureTitle = "anv.dev";
 }

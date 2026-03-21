@@ -44,6 +44,24 @@ class LoginScreen extends StatelessWidget {
                     )
                   ],
                 ),
+              ),
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Checkbox(value: false, onChanged: (value) {}),
+                          Text(TTexts.rememberMe)
+                        ],
+                      ),
+                      TextButton(onPressed: () {}, child: Text(TTexts.forgotPassword))
+                    ],
+                  ),
+                  ElevatedButton(onPressed: () {}, child: Text(TTexts.signIn)),
+                  TextButton(onPressed: () {}, child: Text(TTexts.createAccount))
+                ],
               )
             ],
           ),
