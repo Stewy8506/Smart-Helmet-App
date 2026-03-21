@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helmet_app/features/authentication/screens/login/login.dart';
+import 'package:helmet_app/features/authentication/screens/navigation/maps.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +32,7 @@ class MyApp extends StatelessWidget {
           hintStyle: TextStyle(color: Colors.white70),
         ),
       ),
-      home: const LoginScreen(),
+      home: const MapsScreen(),
     );
   }
 }
