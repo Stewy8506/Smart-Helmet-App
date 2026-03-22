@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 class MapsScreen extends StatefulWidget {
   const MapsScreen({super.key});
@@ -68,103 +69,154 @@ class _MapsScreenState extends State<MapsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: "Search destination...",
-            border: InputBorder.none,
+      body: LiquidGlassView(
+        backgroundWidget: FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: LatLng(22.5726, 88.3639), // Kolkata
+            initialZoom: 13,
           ),
-          onSubmitted: (value) {
-            _searchLocation(value);
-          },
-        ),
-      ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: LatLng(22.5726, 88.3639), // Kolkata
-              initialZoom: 13,
+          children: [
+            TileLayer(
+              urlTemplate: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+              userAgentPackageName: 'com.example.helmet_app',
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.helmet_app',
-              ),
 
-              if (routePoints.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: routePoints,
-                      strokeWidth: 4,
-                      color: Colors.blue,
-                    ),
-                  ],
-                ),
-
-              MarkerLayer(
-                markers: [
-                  if (currentLocation != null)
-                    Marker(
-                      point: currentLocation!,
-                      width: 40,
-                      height: 40,
-                      child: Container(
-                        alignment: Alignment.center,
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.5),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Marker(
-                      point: LatLng(22.5726, 88.3639),
-                      width: 40,
-                      height: 40,
-                      child: Icon(Icons.location_pin, color: Colors.red, size: 40),
-                    ),
-                  if (routePoints.isNotEmpty)
-                    Marker(
-                      point: routePoints.last,
-                      width: 40,
-                      height: 40,
-                      child: Icon(Icons.flag, color: Colors.green, size: 40),
-                    ),
+            if (routePoints.isNotEmpty)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: routePoints,
+                    strokeWidth: 5,
+                    color: Colors.cyanAccent,
+                  ),
                 ],
               ),
-            ],
-          ),
-          
-          Positioned(
-            bottom: 100,
-            right: 16,
-            child: FloatingActionButton(
-              mini: true,
-              backgroundColor: Colors.white,
-              onPressed: () {
-                if (currentLocation != null) {
-                  _mapController.move(currentLocation!, 16);
-                }
-              },
-              child: Icon(Icons.my_location, color: Colors.black),
+
+            MarkerLayer(
+              markers: [
+                if (currentLocation != null)
+                  Marker(
+                    point: currentLocation!,
+                    width: 40,
+                    height: 40,
+                    child: Container(
+                      alignment: Alignment.center,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withAlpha(128),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Marker(
+                    point: LatLng(22.5726, 88.3639),
+                    width: 40,
+                    height: 40,
+                    child: Icon(Icons.location_pin, color: Colors.red, size: 40),
+                  ),
+                if (routePoints.isNotEmpty)
+                  Marker(
+                    point: routePoints.last,
+                    width: 40,
+                    height: 40,
+                    child: Icon(Icons.flag, color: Colors.green, size: 40),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        children: [
+          LiquidGlass(
+            width: 55,
+            height: 55,
+            position: LiquidGlassAlignPosition(
+              alignment: Alignment(0,0.8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 0),
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return Dialog(
+                        backgroundColor: Colors.black,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: TextField(
+                            controller: _searchController,
+                            autofocus: true,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: "Search destination...",
+                              hintStyle: TextStyle(color: Colors.white54),
+                              border: InputBorder.none,
+                            ),
+                            onSubmitted: (value) {
+                              Navigator.pop(context);
+                              _searchLocation(value);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: Container(
+                  height: 45,
+                  width: 45,
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(128),
+                        blurRadius: 10,
+                      )
+                    ],
+                  ),
+                  child: const Icon(Icons.search, color: Colors.white),
+                ),
+              ),
             ),
           ),
+
+          
+
+          LiquidGlass(
+            width: 55,
+            height: 55,
+            position: LiquidGlassAlignPosition(
+              alignment: Alignment.bottomRight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 100, right: 16),
+              child: FloatingActionButton(
+                mini: true,
+                backgroundColor: Colors.white,
+                onPressed: () {
+                  if (currentLocation != null) {
+                    _mapController.move(currentLocation!, 16);
+                  }
+                },
+                child: Icon(Icons.my_location, color: Colors.black),
+              ),
+            ),
+          ),
+          
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -173,6 +225,8 @@ class _MapsScreenState extends State<MapsScreen> {
         },
         child: Icon(Icons.navigation),
       ),
+
+      
     );
   }
 
