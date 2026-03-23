@@ -4,6 +4,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
+final MapController globalMapController = MapController();
+final ValueNotifier<LatLng?> userLocationNotifier = ValueNotifier(null);
+final ValueNotifier<double> mapRotationNotifier = ValueNotifier(0.0);
+
 class MyBackgroundContent extends StatefulWidget {
   const MyBackgroundContent({super.key});
 
@@ -12,7 +16,6 @@ class MyBackgroundContent extends StatefulWidget {
 }
 
 class _MyBackgroundContentState extends State<MyBackgroundContent> {
-  final MapController _mapController = MapController();
 
   LatLng? currentLocation;
   StreamSubscription<Position>? _positionStream;
@@ -46,12 +49,9 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
     ).listen((Position position) {
       final latLng = LatLng(position.latitude, position.longitude);
 
-      setState(() {
-        currentLocation = latLng;
-      });
-
-      // Move camera to user
-      _mapController.move(latLng, 16);
+      currentLocation = latLng;
+      userLocationNotifier.value = latLng;
+      setState(() {});
     });
   }
 
@@ -64,10 +64,11 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
-      mapController: _mapController,
+      mapController: globalMapController,
       options: MapOptions(
         initialCenter: currentLocation ?? LatLng(22.5726, 88.3639),
         initialZoom: 13,
+        initialRotation: mapRotationNotifier.value,
       ),
       children: [
         // 🌍 Map tiles
@@ -83,21 +84,32 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
             markers: [
               Marker(
                 point: currentLocation!,
-                width: 30,
-                height: 30,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withAlpha(120),
-                        blurRadius: 10,
-                        spreadRadius: 2,
+                width: 40,
+                height: 40,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Outer glow / accuracy circle
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.2),
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // Inner blue dot
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3), 
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
