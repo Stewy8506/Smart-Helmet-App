@@ -32,7 +32,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                   alignment: const Alignment(0, 0),
                   child: LiquidGlass(
                     shape: LiquidRoundedRectangle(borderRadius: 20),
-                    child: const SizedBox(width: 50, height: 110),
+                    child: const SizedBox(width: TSizes.iconLg, height: 110),
                   ),
                 ),
 
@@ -70,8 +70,8 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                         ],
                       ),
                       child: Container(
-																							width: 50,
-																							height: 50,
+																							width: TSizes.iconLg,
+																							height: TSizes.iconLg,
 																							decoration: BoxDecoration(
 																								shape: BoxShape.circle,
 																								border: Border.all(
