@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-import 'package:helmet_app/features/testing_page/util/Background.dart';
+import 'package:helmet_app/features/testing_page/util/background.dart';
 
 class ExperimentalScreen extends StatefulWidget {
   const ExperimentalScreen({super.key});
