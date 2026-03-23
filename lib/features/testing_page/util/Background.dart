@@ -71,10 +71,17 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
         initialRotation: mapRotationNotifier.value,
       ),
       children: [
-        // 🌍 Map tiles
+        // 🌍 Base Map (dark)
         TileLayer(
           urlTemplate:
               'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          userAgentPackageName: 'com.example.helmet_app',
+        ),
+
+        // 🏷️ Labels + POIs (like Google Maps)
+        TileLayer(
+          urlTemplate:
+              'https://a.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
           userAgentPackageName: 'com.example.helmet_app',
         ),
 

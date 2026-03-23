@@ -7,6 +7,8 @@ import 'package:helmet_app/common/text.dart';
 import 'package:helmet_app/features/testing_page/util/Background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ExperimentalScreen extends StatefulWidget {
   const ExperimentalScreen({super.key});
@@ -17,6 +19,28 @@ class ExperimentalScreen extends StatefulWidget {
 
 class _ExperimentalScreenState extends State<ExperimentalScreen> {
   bool isPressed = false;
+
+  Future<void> _searchLocation(String query) async {
+    final url = Uri.parse(
+        "https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1");
+
+    try {
+      final response = await http.get(url, headers: {
+        "User-Agent": "helmet_app"
+      });
+
+      final data = json.decode(response.body);
+
+      if (data.isNotEmpty) {
+        final lat = double.parse(data[0]['lat']);
+        final lon = double.parse(data[0]['lon']);
+
+        globalMapController.move(LatLng(lat, lon), 16);
+      }
+    } catch (e) {
+      print("Search error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -216,51 +240,77 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                       ),
                       color: Colors.grey.withAlpha(20),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(width: TSizes.spaceBtwItems),
-                        GestureDetector(
-                          onTap: () {
-                            print("Search tapped");
+                    child: GestureDetector(
+                      onTap: () async {
+                        String? query = await showDialog(
+                          context: context,
+                          builder: (context) {
+                            String input = "";
+                            return AlertDialog(
+                              backgroundColor: Colors.black,
+                              title: const Text("Search location", style: TextStyle(color: Colors.white)),
+                              content: TextField(
+                                autofocus: true,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: const InputDecoration(
+                                  hintText: "Enter place",
+                                  hintStyle: TextStyle(color: Colors.white54),
+                                ),
+                                onChanged: (value) => input = value,
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text("Cancel"),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, input),
+                                  child: const Text("Search"),
+                                ),
+                              ],
+                            );
                           },
-                          child: Icon(
+                        );
+
+                        if (query != null && query.isNotEmpty) {
+                          _searchLocation(query);
+                        }
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(width: TSizes.spaceBtwItems),
+                          Icon(
                             Icons.search,
                             color: Colors.white54,
                             size: TSizes.iconMd,
                           ),
-                        ),
-                        SizedBox(width: 10),
-                        GestureDetector(
-                          onTap: () {
-                            print("Search tapped");
-                          },
-                          child: Text(
+                          SizedBox(width: 10),
+                          Text(
                             "Search Maps",
                             style: GoogleFonts.montserrat(
                               color: Colors.white54,
                               fontSize: TSizes.fontMd,
                             ),
                           ),
-                        ),
-                        SizedBox(
-                          width:
-                              TSizes.spaceBtwSections +
-                              TSizes.spaceBtwItems +
-                              12,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            print("Microphone tapped");
-                          },
-                          child: Icon(
-                            Icons.mic,
-                            color: Colors.white54,
-                            size: TSizes.iconMd,
+                          SizedBox(
+                            width: TSizes.spaceBtwSections +
+                                TSizes.spaceBtwItems +
+                                12,
                           ),
-                        ),
-                      ],
+                          GestureDetector(
+                            onTap: () {
+                              print("Microphone tapped");
+                            },
+                            child: Icon(
+                              Icons.mic,
+                              color: Colors.white54,
+                              size: TSizes.iconMd,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
