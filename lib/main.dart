@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:helmet_app/features/authentication/screens/navigation/maps.dart';
+import 'package:helmet_app/features/testing_page/tester.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
           hintStyle: TextStyle(color: Colors.white70),
         ),
       ),
-      home: const MapsScreen(),
+      home: const ExperimentalScreen(),
     );
   }
 }
