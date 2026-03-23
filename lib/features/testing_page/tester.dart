@@ -4,42 +4,64 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import 'package:helmet_app/features/testing_page/util/Background.dart';
 
-class ExperimentalScreen extends StatelessWidget {
+class ExperimentalScreen extends StatefulWidget {
   const ExperimentalScreen({super.key});
+
+  @override
+  State<ExperimentalScreen> createState() => _ExperimentalScreenState();
+}
+
+class _ExperimentalScreenState extends State<ExperimentalScreen> {
+  bool isPressed = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // 🔥 black base
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. Background content
           const MyBackgroundContent(),
 
-          // 2. Liquid glass layer
           LiquidGlassLayer(
-            child: Stack(
-              children: [
-                // Example glass widget
-                Center(
-                  child: LiquidGlass(
-                    shape: LiquidRoundedSuperellipse(borderRadius: 30),
-                    child: const SizedBox.square(dimension: 100),
-                  ),
-                ),
-              ],
+            settings: const LiquidGlassSettings(
+              thickness: 20,
+              blur: 10,
             ),
-          ),
-
-          // 3. Normal UI (text on top)
-          SafeArea(
             child: Center(
-              child: Text(
-                "Experimental Screen",
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 22,
-                ),
+              child: GestureDetector(
+                onTapDown: (_) {
+                  setState(() => isPressed = true);
+                },
+                onTapUp: (_) {
+                  setState(() => isPressed = false);
+                },
+                onTapCancel: () {
+                  setState(() => isPressed = false);
+                },
+                onTap: () {
+                  print("Tapped");
+                },
+                child: AnimatedContainer(
+  															duration: const Duration(milliseconds: 150),
+																	transformAlignment: Alignment.center,
+  															transform: isPressed
+      												? (Matrix4.identity()..scaleByDouble(0.95,0.95,1.0,1.0))
+      												: Matrix4.identity(),
+  															decoration: BoxDecoration(
+    														borderRadius: BorderRadius.circular(30),
+    														boxShadow: [
+      													BoxShadow(
+        												color: Colors.white.withAlpha(isPressed ? 10 : 0),
+        												blurRadius: isPressed ? 50 : 15,
+       												 spreadRadius: isPressed ? 8 : 1,
+     													 ),
+    														],
+  															),
+  															child: LiquidGlass(
+    														shape: LiquidRoundedRectangle(borderRadius: 30),
+    														child: const SizedBox.square(dimension: 100),
+  															),
+																)
               ),
             ),
           ),
