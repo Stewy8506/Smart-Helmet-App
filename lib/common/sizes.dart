@@ -51,4 +51,8 @@ class TSizes {
 
   //Divider height
   static const double dividerHeight = 1.0;
+
+
+  static const double searchBarAlignmentY = 0.935;
+
 }

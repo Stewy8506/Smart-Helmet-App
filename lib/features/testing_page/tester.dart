@@ -19,6 +19,24 @@ class ExperimentalScreen extends StatefulWidget {
 
 class _ExperimentalScreenState extends State<ExperimentalScreen> {
   bool isPressed = false;
+  bool isSearching = false;
+  final FocusNode _searchFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchFocus.addListener(() {
+      setState(() {
+        isSearching = _searchFocus.hasFocus;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchFocus.dispose();
+    super.dispose();
+  }
 
   Future<void> _searchLocation(String query) async {
     final url = Uri.parse(
@@ -46,18 +64,23 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          const MyBackgroundContent(),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: Stack(
+          children: [
+            const MyBackgroundContent(),
 
-          LiquidGlassLayer(
-            settings: const LiquidGlassSettings(
-              thickness: 20,
-              blur: 2,
-              glassColor: Colors.black26,
-            ),
-            child: Stack(
-              children: [
+            LiquidGlassLayer(
+              settings: const LiquidGlassSettings(
+                thickness: 20,
+                blur: 2,
+                glassColor: Colors.black26,
+              ),
+              child: Stack(
+                  children: [
 
                 //Zoom Controls
                 Align(
@@ -196,16 +219,95 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                   ),
                 ),
 
-              //Searchbar Glass
+              //Searchbar Glass (expanding)
                 Align(
-                  alignment: const Alignment(0, 0.939),
-                  child: LiquidGlass(
-                    shape: LiquidRoundedRectangle(
-                      borderRadius: TSizes.searchbarGlassHeight / 2,
-                    ),
-                    child: const SizedBox(
-                      width: 330,
-                      height: TSizes.searchbarGlassHeight,
+                  alignment: const Alignment(0, 0.95),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    width: 330,
+                    height: isSearching
+                        ? TSizes.searchbarGlassHeight + 250
+                        : TSizes.searchbarGlassHeight,
+                    child: LiquidGlass(
+                      shape: LiquidRoundedRectangle(
+                        borderRadius: TSizes.searchbarGlassHeight / 2,
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: TSizes.searchbarGlassHeight,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.search, color: Colors.white54),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: TextField(
+                                      focusNode: _searchFocus,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(
+                                        hintText: "Search Maps",
+                                        hintStyle: TextStyle(color: Colors.white54),
+                                        border: InputBorder.none,
+                                      ),
+                                      onSubmitted: (value) {
+                                        if (value.isNotEmpty) {
+                                          _searchLocation(value);
+                                        }
+                                        FocusScope.of(context).unfocus();
+                                      },
+                                      onTapOutside: (_) {
+                                        FocusScope.of(context).unfocus();
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (isSearching) ...[
+                            const SizedBox(height: 10),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "Places",
+                                  style: GoogleFonts.montserrat(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _quickCircle(Icons.home, "Home"),
+                                _quickCircle(Icons.work, "Work"),
+                                _quickCircle(Icons.add, "Add"),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  "Your Guides",
+                                  style: GoogleFonts.montserrat(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ]
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -213,7 +315,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
 
               //Search Bar with microphone icon
                 Align(
-                  alignment: const Alignment(-0.45, 0.925),
+                  alignment: const Alignment(-0.45, TSizes.searchBarAlignmentY),
                   child: Container(
                     width: TSizes.searchAreaWidth,
                     height: TSizes.searchbarHeight,
@@ -230,90 +332,80 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                   ),
                 ),
                 Align(
-                  alignment: const Alignment(-0.45, 0.925),
-                  child: Container(
-                    width: TSizes.searchAreaWidth,
-                    height: TSizes.searchbarHeight,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                        TSizes.searchbarHeight / 2,
-                      ),
-                      color: Colors.grey.withAlpha(20),
-                    ),
+                  alignment: const Alignment(-0.45, TSizes.searchBarAlignmentY),
+                  child: IgnorePointer(
+                    ignoring: isSearching,
                     child: GestureDetector(
-                      onTap: () async {
-                        String? query = await showDialog(
-                          context: context,
-                          builder: (context) {
-                            String input = "";
-                            return AlertDialog(
-                              backgroundColor: Colors.black,
-                              title: const Text("Search location", style: TextStyle(color: Colors.white)),
-                              content: TextField(
-                                autofocus: true,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  hintText: "Enter place",
-                                  hintStyle: TextStyle(color: Colors.white54),
-                                ),
-                                onChanged: (value) => input = value,
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text("Cancel"),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, input),
-                                  child: const Text("Search"),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-
-                        if (query != null && query.isNotEmpty) {
-                          _searchLocation(query);
-                        }
+                      onTapDown: (_) => setState(() => isPressed = true),
+                      onTapUp: (_) => setState(() => isPressed = false),
+                      onTapCancel: () => setState(() => isPressed = false),
+                      onTap: () {
+                        FocusScope.of(context).requestFocus(_searchFocus);
                       },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(width: TSizes.spaceBtwItems),
-                          Icon(
-                            Icons.search,
-                            color: Colors.white54,
-                            size: TSizes.iconMd,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        transformAlignment: Alignment.center,
+                        transform: isPressed
+                            ? (Matrix4.identity()..scaleByDouble(0.97, 0.97, 1.0, 1.0))
+                            : Matrix4.identity(),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                            TSizes.searchbarHeight / 2,
                           ),
-                          SizedBox(width: 10),
-                          Text(
-                            "Search Maps",
-                            style: GoogleFonts.montserrat(
-                              color: Colors.white54,
-                              fontSize: TSizes.fontMd,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withAlpha(isPressed ? 20 : 5),
+                              blurRadius: isPressed ? 10 : 15,
+                              spreadRadius: isPressed ? 2 : 0,
                             ),
-                          ),
-                          SizedBox(
-                            width: TSizes.spaceBtwSections +
-                                TSizes.spaceBtwItems +
-                                12,
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              print("Microphone tapped");
-                            },
-                            child: Icon(
-                              Icons.mic,
-                              color: Colors.white54,
-                              size: TSizes.iconMd,
+                          ],
+                        ),
+                        child: Container(
+                          width: TSizes.searchAreaWidth,
+                          height: TSizes.searchbarHeight,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              TSizes.searchbarHeight / 2,
                             ),
+                            color: Colors.grey.withAlpha(20),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(width: TSizes.spaceBtwItems),
+                              SizedBox(width: 10),
+                              Text(
+                                "",
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.white54,
+                                  fontSize: TSizes.fontMd,
+                                ),
+                              ),
+                              SizedBox(
+                                width: TSizes.spaceBtwSections +
+                                    TSizes.spaceBtwItems +
+                                    150,
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  print("Microphone tapped");
+                                },
+                                child: Icon(
+                                  Icons.mic,
+                                  color: Colors.white54,
+                                  size: TSizes.iconMd,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
+
+
 
 
               //Searchbar Avatar
@@ -337,60 +429,11 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                     ),
                   ),
                 ),
-
-                Align(
-                  alignment: const Alignment(0, 0),
-                  child: GestureDetector(
-                    onTapDown: (_) {
-                      setState(() => isPressed = true);
-                    },
-                    onTapUp: (_) {
-                      setState(() => isPressed = false);
-                    },
-                    onTapCancel: () {
-                      setState(() => isPressed = false);
-                    },
-                    onTap: () {
-                      print("Tapped");
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      transformAlignment: Alignment.center,
-                      transform: isPressed
-                          ? (Matrix4.identity()
-                              ..scaleByDouble(0.95, 0.95, 1.0, 1.0))
-                          : Matrix4.identity(),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        //borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.white.withAlpha(isPressed ? 20 : 0),
-                            blurRadius: isPressed ? 4 : 15,
-                            spreadRadius: isPressed ? 4 : 1,
-                          ),
-                        ],
-                      ),
-                      child: Container(
-                        width: TSizes.iconLg,
-                        height: TSizes.iconLg,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withAlpha(20),
-                            width: 2,
-                          ),
-                        ),
-                        //shape: LiquidRoundedSuperellipse(borderRadius: 50),
-                        //child: const SizedBox(width: 50, height: 50),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -429,7 +472,7 @@ class _AnimatedButtonState extends State<_AnimatedButton> {
         duration: const Duration(milliseconds: 150),
         transformAlignment: Alignment.center,
         transform: isPressed
-            ? (Matrix4.identity()..scale(0.95, 0.95, 1.0))
+            ? (Matrix4.identity()..scaleByDouble(0.95, 0.95, 1.0, 1.0))
             : Matrix4.identity(),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(widget.borderRadius),
@@ -459,16 +502,11 @@ class _AnimatedAvatarButton extends StatefulWidget {
   final Widget child;
   final double borderRadius;
   final VoidCallback onTap;
-  final double? width;
-  final double? height;
   const _AnimatedAvatarButton({
-    Key? key,
     required this.child,
     required this.borderRadius,
     required this.onTap,
-    this.width,
-    this.height,
-  }) : super(key: key);
+  });
 
   @override
   State<_AnimatedAvatarButton> createState() => _AnimatedAvatarButtonState();
@@ -487,7 +525,7 @@ class _AnimatedAvatarButtonState extends State<_AnimatedAvatarButton> {
         duration: const Duration(milliseconds: 150),
         transformAlignment: Alignment.center,
         transform: isPressed
-            ? (Matrix4.identity()..scale(0.95, 0.95, 1.0))
+            ? (Matrix4.identity()..scaleByDouble(0.95, 0.95, 1.0, 1.0))
             : Matrix4.identity(),
         decoration: BoxDecoration(
           boxShadow: [
@@ -501,8 +539,8 @@ class _AnimatedAvatarButtonState extends State<_AnimatedAvatarButton> {
         child: LiquidGlass(
           shape: LiquidRoundedSuperellipse(borderRadius: widget.borderRadius),
           child: SizedBox(
-            width: widget.width ?? 48,
-            height: widget.height ?? 48,
+            width: 48,
+            height: 48,
             child: Center(child: widget.child),
           ),
         ),
@@ -539,7 +577,7 @@ class _ZoomButtonState extends State<_ZoomButton> {
         duration: const Duration(milliseconds: 150),
         transformAlignment: Alignment.center,
         transform: isPressed
-            ? (Matrix4.identity()..scale(0.95, 0.95, 1.0))
+            ? (Matrix4.identity()..scaleByDouble(0.95, 0.95, 1.0, 1.0))
             : Matrix4.identity(),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.only(
@@ -565,4 +603,25 @@ class _ZoomButtonState extends State<_ZoomButton> {
       ),
     );
   }
+}
+
+Widget _quickCircle(IconData icon, String label) {
+  return Column(
+    children: [
+      Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.3),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        label,
+        style: const TextStyle(color: Colors.white70, fontSize: 12),
+      ),
+    ],
+  );
 }
