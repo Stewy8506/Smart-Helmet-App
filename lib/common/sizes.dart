@@ -43,10 +43,11 @@ class TSizes {
   static const double borderRadiusMd = 8.0;
   static const double borderRadiusLg = 16.0;
 
-  static const double searchbarGlassHeight = 68.0;
+  static const double searchbarGlassHeight = 60.0;
   static const double searchbarHeight = 48.0;
-  static const double searchbarAvatarHeight = 56.0;
+  static const double searchbarAvatarHeight = 48.0;
   static const double backbuttonSize = 48.0;
+  static const double searchAreaWidth = 265.0;
 
   //Divider height
   static const double dividerHeight = 1.0;

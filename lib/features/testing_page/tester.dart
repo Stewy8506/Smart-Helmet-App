@@ -54,7 +54,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
             settings: const LiquidGlassSettings(
               thickness: 20,
               blur: 2,
-              glassColor: Colors.black12,
+              glassColor: Colors.black26,
             ),
             child: Stack(
               children: [
@@ -198,7 +198,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
 
               //Searchbar Glass
                 Align(
-                  alignment: const Alignment(0, 0.95),
+                  alignment: const Alignment(0, 0.939),
                   child: LiquidGlass(
                     shape: LiquidRoundedRectangle(
                       borderRadius: TSizes.searchbarGlassHeight / 2,
@@ -215,7 +215,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                 Align(
                   alignment: const Alignment(-0.45, 0.925),
                   child: Container(
-                    width: 250,
+                    width: TSizes.searchAreaWidth,
                     height: TSizes.searchbarHeight,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(
@@ -232,7 +232,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                 Align(
                   alignment: const Alignment(-0.45, 0.925),
                   child: Container(
-                    width: 250,
+                    width: TSizes.searchAreaWidth,
                     height: TSizes.searchbarHeight,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(
@@ -318,7 +318,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
 
               //Searchbar Avatar
                 Align(
-                  alignment: const Alignment(0.80, 0.935),
+                  alignment: const Alignment(0.80, 0.925),
                   child: _AnimatedButton(
                     borderRadius: TSizes.searchbarAvatarHeight / 2,
                     onTap: () {
