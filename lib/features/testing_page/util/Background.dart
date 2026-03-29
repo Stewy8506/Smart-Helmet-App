@@ -23,7 +23,16 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
   @override
   void initState() {
     super.initState();
+    _listenServiceStatus();
     _initLocation();
+  }
+
+  void _listenServiceStatus() {
+    Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
+      if (status == ServiceStatus.enabled) {
+        _initLocation(); // retry when user turns location ON
+      }
+    });
   }
 
   Future<void> _initLocation() async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:helmet_app/features/testing_page/tester.dart';
+import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,6 +32,9 @@ class MyApp extends StatelessWidget {
           hintStyle: TextStyle(color: Colors.white70),
         ),
       ),
+      routes: {
+        '/grid_screen': (context) => const GridScreen(),
+      },
       home: const ExperimentalScreen(),
     );
   }

@@ -61,7 +61,6 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
@@ -204,7 +203,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                   child: _AnimatedButton(
                     borderRadius: TSizes.backbuttonSize / 2,
                     onTap: () {
-                      print("Back button tapped");
+                      Navigator.pushNamed(context, '/grid_screen');
                     },
                     width: TSizes.backbuttonSize,
                     height: TSizes.backbuttonSize,
