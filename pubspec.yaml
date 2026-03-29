@@ -40,6 +40,7 @@ dependencies:
   liquid_glass_easy: ^1.1.1
   liquid_glass_renderer: ^0.2.0-dev.4
   webview_flutter: ^4.0.7
+  package_info_plus: 9.0.0
 
 
   # The following adds the Cupertino Icons font to your application.
