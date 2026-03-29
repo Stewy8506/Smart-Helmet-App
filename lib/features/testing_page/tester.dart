@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/common/text.dart';
-import '../spotify.dart';
+import 'package:helmet_app/features/spotify/spotify.dart';
 import 'package:helmet_app/features/testing_page/util/Background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
