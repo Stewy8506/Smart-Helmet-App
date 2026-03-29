@@ -81,7 +81,7 @@ class _GridTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: color.withAlpha(39),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withOpacity(0.4)),
         ),
