@@ -5,7 +5,7 @@ import 'package:helmet_app/common/sizes.dart';
 
 import 'package:helmet_app/features/testing_page/util/background.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -51,8 +51,9 @@ class _MapsScreenState extends State<MapsScreen> {
       if (data.isNotEmpty) {
         final lat = double.parse(data[0]['lat']);
         final lon = double.parse(data[0]['lon']);
-
-        globalMapController.move(LatLng(lat, lon), 16);
+        globalMapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(lat, lon), 16),
+        );
       }
     } catch (e) {
       print("Search error: $e");
@@ -98,19 +99,7 @@ class _MapsScreenState extends State<MapsScreen> {
                               icon: Icons.add,
                               isTop: true,
                               onTap: () {
-                                double currentZoom = globalMapController.camera.zoom;
-                                double targetZoom = (currentZoom + 1).clamp(3.0, 18.0);
-                                for (int i = 0; i <= 10; i++) {
-                                  double t = i / 10;
-                                  double eased = Curves.easeInOut.transform(t);
-                                  double z = currentZoom + (targetZoom - currentZoom) * eased;
-                                  Future.delayed(Duration(milliseconds: i * 16), () {
-                                    globalMapController.move(
-                                      globalMapController.camera.center,
-                                      z,
-                                    );
-                                  });
-                                }
+                                globalMapController?.animateCamera(CameraUpdate.zoomIn());
                               },
                             ),
                           ),
@@ -124,19 +113,7 @@ class _MapsScreenState extends State<MapsScreen> {
                               icon: Icons.remove,
                               isTop: false,
                               onTap: () {
-                                double currentZoom = globalMapController.camera.zoom;
-                                double targetZoom = (currentZoom - 1).clamp(3.0, 18.0);
-                                for (int i = 0; i <= 10; i++) {
-                                  double t = i / 10;
-                                  double eased = Curves.easeInOut.transform(t);
-                                  double z = currentZoom + (targetZoom - currentZoom) * eased;
-                                  Future.delayed(Duration(milliseconds: i * 16), () {
-                                    globalMapController.move(
-                                      globalMapController.camera.center,
-                                      z,
-                                    );
-                                  });
-                                }
+                                globalMapController?.animateCamera(CameraUpdate.zoomOut());
                               },
                             ),
                           ),
@@ -154,8 +131,10 @@ class _MapsScreenState extends State<MapsScreen> {
                     onTap: () async {
                       try {
                         Position position = await Geolocator.getCurrentPosition();
-                        LatLng latLng = LatLng(position.latitude, position.longitude);
-                        globalMapController.move(latLng, 16);
+                        final latLng = LatLng(position.latitude, position.longitude);
+                        globalMapController?.animateCamera(
+                          CameraUpdate.newLatLngZoom(latLng, 16),
+                        );
                       } catch (e) {
                         print("Location error: $e");
                       }
@@ -173,28 +152,19 @@ class _MapsScreenState extends State<MapsScreen> {
                   child: _AnimatedButton(
                     borderRadius: 24,
                     onTap: () {
-                      double currentRotation = globalMapController.camera.rotation;
-                      double targetRotation = currentRotation.abs() < 1 ? 45 : 0;
-                      for (int i = 0; i <= 10; i++) {
-                        double t = i / 10;
-                        double eased = Curves.easeInOut.transform(t);
-                        double rot = currentRotation + (targetRotation - currentRotation) * eased;
-                        Future.delayed(Duration(milliseconds: i * 20), () {
-                          globalMapController.rotate(rot);
-                        });
-                      }
-                    },
-                    child: Builder(
-                      builder: (context) {
-                        double rotation = globalMapController.camera.rotation;
-                        return Transform.rotate(
-                          angle: -rotation * (3.14159 / 180),
-                          child: const Icon(
-                            Icons.explore,
-                            color: Colors.white70,
+                      globalMapController?.animateCamera(
+                        CameraUpdate.newCameraPosition(
+                          CameraPosition(
+                            target: const LatLng(0, 0),
+                            zoom: 15,
+                            bearing: 45,
                           ),
-                        );
-                      },
+                        ),
+                      );
+                    },
+                    child: const Icon(
+                      Icons.explore,
+                      color: Colors.white70,
                     ),
                   ),
                 ),

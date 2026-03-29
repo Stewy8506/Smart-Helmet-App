@@ -12,6 +12,10 @@
             android:name="com.spotify.sdk.android.CLIENT_ID"
             android:value="0ec7815cd621413dbd2dad06f74b8d9a"/>
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDAEEbOqNnJ_Bip7X86ao-ZUDQayCE4aRI"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

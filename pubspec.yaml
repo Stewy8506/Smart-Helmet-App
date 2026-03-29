@@ -41,11 +41,13 @@ dependencies:
   liquid_glass_renderer: ^0.2.0-dev.4
   webview_flutter: ^4.0.7
   package_info_plus: 9.0.0
+  google_maps_flutter: ^2.6.0
 
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.9
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:

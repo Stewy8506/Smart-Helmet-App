@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+
 import 'package:helmet_app/common/sizes.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'package:helmet_app/features/testing_page/util/background.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -19,6 +24,10 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
   bool isPressed = false;
   bool isSearching = false;
   final FocusNode _searchFocus = FocusNode();
+  Position? _currentPosition;
+
+  List<dynamic> _suggestions = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -27,6 +36,11 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
       setState(() {
         isSearching = _searchFocus.hasFocus;
       });
+    });
+    Geolocator.getLastKnownPosition().then((pos) {
+      if (pos != null) {
+        _currentPosition = pos;
+      }
     });
   }
 
@@ -37,24 +51,67 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
   }
 
   Future<void> _searchLocation(String query) async {
+    final apiKey = "AIzaSyDAEEbOqNnJ_Bip7X86ao-ZUDQayCE4aRI"; // replace if needed
+
     final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1");
+        "https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=$query&inputtype=textquery&fields=geometry&key=$apiKey");
 
     try {
-      final response = await http.get(url, headers: {
-        "User-Agent": "helmet_app"
-      });
-
+      final response = await http.get(url);
       final data = json.decode(response.body);
 
-      if (data.isNotEmpty) {
-        final lat = double.parse(data[0]['lat']);
-        final lon = double.parse(data[0]['lon']);
+      if (data['candidates'] != null && data['candidates'].isNotEmpty) {
+        final location = data['candidates'][0]['geometry']['location'];
+        final lat = location['lat'];
+        final lon = location['lng'];
 
-        globalMapController.move(LatLng(lat, lon), 16);
+        globalMapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(LatLng(lat, lon), 16),
+        );
       }
     } catch (e) {
-      print("Search error: $e");
+      print("Places search error: $e");
+    }
+  }
+
+  Future<void> _fetchSuggestions(String input) async {
+    if (input.isEmpty) {
+      setState(() => _suggestions = []);
+      return;
+    }
+
+    final apiKey = "AIzaSyDAEEbOqNnJ_Bip7X86ao-ZUDQayCE4aRI";
+
+    String baseUrl =
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$input&key=$apiKey";
+
+    if (_currentPosition != null) {
+      final lat = _currentPosition!.latitude;
+      final lng = _currentPosition!.longitude;
+      baseUrl += "&location=$lat,$lng&radius=5000&components=country:in";
+    }
+
+    final url = Uri.parse(baseUrl);
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'OK') {
+          setState(() {
+            _suggestions = data['predictions'];
+          });
+        } else {
+          setState(() => _suggestions = []);
+          print("Autocomplete API status: ${data['status']}");
+        }
+      } else {
+        print("HTTP error: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Autocomplete error: $e");
     }
   }
 
@@ -96,19 +153,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                               icon: Icons.add,
                               isTop: true,
                               onTap: () {
-                                double currentZoom = globalMapController.camera.zoom;
-                                double targetZoom = (currentZoom + 1).clamp(3.0, 18.0);
-                                for (int i = 0; i <= 10; i++) {
-                                  double t = i / 10;
-                                  double eased = Curves.easeInOut.transform(t);
-                                  double z = currentZoom + (targetZoom - currentZoom) * eased;
-                                  Future.delayed(Duration(milliseconds: i * 16), () {
-                                    globalMapController.move(
-                                      globalMapController.camera.center,
-                                      z,
-                                    );
-                                  });
-                                }
+                                globalMapController?.animateCamera(CameraUpdate.zoomIn());
                               },
                             ),
                           ),
@@ -122,19 +167,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                               icon: Icons.remove,
                               isTop: false,
                               onTap: () {
-                                double currentZoom = globalMapController.camera.zoom;
-                                double targetZoom = (currentZoom - 1).clamp(3.0, 18.0);
-                                for (int i = 0; i <= 10; i++) {
-                                  double t = i / 10;
-                                  double eased = Curves.easeInOut.transform(t);
-                                  double z = currentZoom + (targetZoom - currentZoom) * eased;
-                                  Future.delayed(Duration(milliseconds: i * 16), () {
-                                    globalMapController.move(
-                                      globalMapController.camera.center,
-                                      z,
-                                    );
-                                  });
-                                }
+                                globalMapController?.animateCamera(CameraUpdate.zoomOut());
                               },
                             ),
                           ),
@@ -152,8 +185,10 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                     onTap: () async {
                       try {
                         Position position = await Geolocator.getCurrentPosition();
-                        LatLng latLng = LatLng(position.latitude, position.longitude);
-                        globalMapController.move(latLng, 16);
+                        final latLng = LatLng(position.latitude, position.longitude);
+                        globalMapController?.animateCamera(
+                          CameraUpdate.newLatLngZoom(latLng, 16),
+                        );
                       } catch (e) {
                         print("Location error: $e");
                       }
@@ -171,28 +206,19 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                   child: _AnimatedButton(
                     borderRadius: 24,
                     onTap: () {
-                      double currentRotation = globalMapController.camera.rotation;
-                      double targetRotation = currentRotation.abs() < 1 ? 45 : 0;
-                      for (int i = 0; i <= 10; i++) {
-                        double t = i / 10;
-                        double eased = Curves.easeInOut.transform(t);
-                        double rot = currentRotation + (targetRotation - currentRotation) * eased;
-                        Future.delayed(Duration(milliseconds: i * 20), () {
-                          globalMapController.rotate(rot);
-                        });
-                      }
-                    },
-                    child: Builder(
-                      builder: (context) {
-                        double rotation = globalMapController.camera.rotation;
-                        return Transform.rotate(
-                          angle: -rotation * (3.14159 / 180),
-                          child: const Icon(
-                            Icons.explore,
-                            color: Colors.white70,
+                      globalMapController?.animateCamera(
+                        CameraUpdate.newCameraPosition(
+                          CameraPosition(
+                            target: const LatLng(0, 0),
+                            zoom: 15,
+                            bearing: 45,
                           ),
-                        );
-                      },
+                        ),
+                      );
+                    },
+                    child: const Icon(
+                      Icons.explore,
+                      color: Colors.white70,
                     ),
                   ),
                 ),
@@ -219,91 +245,166 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
               //Searchbar Glass (expanding)
                 Align(
                   alignment: const Alignment(0, 0.95),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    width: 330,
-                    height: isSearching
-                        ? TSizes.searchbarGlassHeight + 250
-                        : TSizes.searchbarGlassHeight,
-                    child: LiquidGlass(
-                      shape: LiquidRoundedRectangle(
-                        borderRadius: TSizes.searchbarGlassHeight / 2,
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: TSizes.searchbarGlassHeight,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.search, color: Colors.white54),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: TextField(
-                                      focusNode: _searchFocus,
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(
-                                        hintText: "Search Maps",
-                                        hintStyle: TextStyle(color: Colors.white54),
-                                        border: InputBorder.none,
+                  child: GestureDetector(
+                    onTap: () {}, // absorb taps so it doesn't collapse
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      width: 330,
+                      height: isSearching
+                          ? TSizes.searchbarGlassHeight + 250
+                          : TSizes.searchbarGlassHeight,
+                      child: LiquidGlass(
+                        shape: LiquidRoundedRectangle(
+                          borderRadius: TSizes.searchbarGlassHeight / 2,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: TSizes.searchbarGlassHeight,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.search, color: Colors.white54),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _searchController,
+                                        focusNode: _searchFocus,
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(
+                                          hintText: "Search Maps",
+                                          hintStyle: TextStyle(color: Colors.white54),
+                                          border: InputBorder.none,
+                                        ),
+                                        onChanged: (value) {
+                                          Future.delayed(const Duration(milliseconds: 300), () {
+                                            if (value == _searchController.text) {
+                                              _fetchSuggestions(value);
+                                            }
+                                          });
+                                        },
+                                        onSubmitted: (value) {
+                                          if (value.isNotEmpty) {
+                                            _searchLocation(value);
+                                            setState(() => _suggestions = []);
+                                          }
+                                          FocusScope.of(context).unfocus();
+                                        },
+                                        onTapOutside: (_) {
+                                          FocusScope.of(context).unfocus();
+                                        },
                                       ),
-                                      onSubmitted: (value) {
-                                        if (value.isNotEmpty) {
-                                          _searchLocation(value);
-                                        }
-                                        FocusScope.of(context).unfocus();
-                                      },
-                                      onTapOutside: (_) {
-                                        FocusScope.of(context).unfocus();
-                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (isSearching) ...[
+                              if (_suggestions.isNotEmpty)
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: _suggestions.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _suggestions[index];
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            final description = item['description'];
+                                            _searchController.text = description;
+
+                                            setState(() {
+                                              _suggestions = [];
+                                            });
+
+                                            _searchLocation(description);
+                                            FocusScope.of(context).unfocus();
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withAlpha(15),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: Colors.white.withAlpha(20)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.place, color: Colors.white54, size: 20),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    item['description'],
+                                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Container(
+                                                  width: 36,
+                                                  height: 36,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withAlpha(20),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.location_on,
+                                                    color: Colors.white70,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              if (_suggestions.isEmpty) ...[
+                                const SizedBox(height: 10),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      "Places",
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.white70,
+                                        fontSize: 16,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (isSearching) ...[
-                            const SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  "Places",
-                                  style: GoogleFonts.montserrat(
-                                    color: Colors.white70,
-                                    fontSize: 16,
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _quickCircle(Icons.home, "Home"),
+                                    _quickCircle(Icons.work, "Work"),
+                                    _quickCircle(Icons.add, "Add"),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      "Your Guides",
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.white70,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _quickCircle(Icons.home, "Home"),
-                                _quickCircle(Icons.work, "Work"),
-                                _quickCircle(Icons.add, "Add"),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  "Your Guides",
-                                  style: GoogleFonts.montserrat(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ]
-                        ],
+                              ]
+                            ]
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -607,7 +708,7 @@ Widget _quickCircle(IconData icon, String label) {
         width: 56,
         height: 56,
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.3),
+          color: Colors.blue.withAlpha(77), // 0.3 * 255
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white),
