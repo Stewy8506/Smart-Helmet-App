@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.helmet_app"
-    compileSdk = flutter.compileSdkVersion ?: 34
+    compileSdk = flutter.compileSdkVersion ?: 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

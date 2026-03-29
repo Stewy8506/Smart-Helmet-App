@@ -447,13 +447,12 @@ class _AnimatedButton extends StatefulWidget {
   final double? width;
   final double? height;
   const _AnimatedButton({
-    Key? key,
     required this.child,
     required this.borderRadius,
     required this.onTap,
     this.width,
     this.height,
-  }) : super(key: key);
+  });
 
   @override
   State<_AnimatedButton> createState() => _AnimatedButtonState();
@@ -555,11 +554,10 @@ class _ZoomButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool isTop;
   const _ZoomButton({
-    Key? key,
     required this.icon,
     required this.onTap,
     required this.isTop,
-  }) : super(key: key);
+  });
   @override
   State<_ZoomButton> createState() => _ZoomButtonState();
 }

@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/common/text.dart';
-import 'package:helmet_app/features/spotify/spotify.dart';
 import 'package:helmet_app/features/testing_page/util/Background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -447,13 +446,12 @@ class _AnimatedButton extends StatefulWidget {
   final double? width;
   final double? height;
   const _AnimatedButton({
-    Key? key,
     required this.child,
     required this.borderRadius,
     required this.onTap,
     this.width,
     this.height,
-  }) : super(key: key);
+  });
 
   @override
   State<_AnimatedButton> createState() => _AnimatedButtonState();
@@ -555,11 +553,10 @@ class _ZoomButton extends StatefulWidget {
   final VoidCallback onTap;
   final bool isTop;
   const _ZoomButton({
-    Key? key,
     required this.icon,
     required this.onTap,
     required this.isTop,
-  }) : super(key: key);
+  });
   @override
   State<_ZoomButton> createState() => _ZoomButtonState();
 }
