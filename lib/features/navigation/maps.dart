@@ -194,7 +194,7 @@ class _MapsScreenState extends State<MapsScreen> {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeInOut,
-                    width: 330,
+                    width: 350,
                     height: isSearching
                         ? TSizes.searchbarGlassHeight + 250
                         : TSizes.searchbarGlassHeight,
@@ -210,7 +210,15 @@ class _MapsScreenState extends State<MapsScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.search, color: Colors.white54),
+                                  GestureDetector(
+                                    onTap: () {
+                                      FocusScope.of(context).requestFocus(_searchFocus);
+                                    },
+                                    child: const Icon(
+                                      Icons.search,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: TextField(
@@ -358,6 +366,7 @@ class _MapsScreenState extends State<MapsScreen> {
                               ),
                               GestureDetector(
                                 onTap: () {
+                                  FocusScope.of(context).requestFocus(_searchFocus);
                                   print("Microphone tapped");
                                 },
                                 child: Icon(

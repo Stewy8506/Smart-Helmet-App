@@ -54,5 +54,6 @@ class TSizes {
 
 
   static const double searchBarAlignmentY = 0.935;
+  static const double searchBarAlignmentZ = 10;
 
 }
