@@ -197,8 +197,6 @@ class _CallsWidgetState extends State<_CallsWidget> {
 
     final priorityOrder = [
       "Sreyashi",
-      "Sagnik RCCIIT",
-      "Anwita",
     ];
 
     setState(() {
@@ -238,9 +236,9 @@ class _CallsWidgetState extends State<_CallsWidget> {
       );
     }
 
-    final favorites = contacts.take(3).toList();
-    final recents = contacts.length > 3
-        ? contacts.sublist(3, contacts.length > 8 ? 8 : contacts.length)
+    final favorites = contacts.take(1).toList();
+    final recents = contacts.length > 1
+        ? contacts.skip(1).toList()
         : [];
 
     return SizedBox(
@@ -266,34 +264,42 @@ class _CallsWidgetState extends State<_CallsWidget> {
             ...favorites.map((contact) {
               final imageData = contact.photoOrThumbnail;
 
-              return GestureDetector(
-                onTap: () => _callContact(contact),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: Colors.grey[800],
-                        backgroundImage: imageData != null
-                            ? MemoryImage(imageData)
-                            : null,
-                        child: imageData == null
-                            ? Text(
-                                contact.displayName.isNotEmpty ? contact.displayName[0] : "?",
-                                style: const TextStyle(color: Colors.white),
-                              )
-                            : null,
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _callContact(contact),
+                  child: AnimatedScale(
+                    scale: 1.0,
+                    duration: const Duration(milliseconds: 100),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Colors.grey[800],
+                            backgroundImage: imageData != null
+                                ? MemoryImage(imageData)
+                                : null,
+                            child: imageData == null
+                                ? Text(
+                                    contact.displayName.isNotEmpty ? contact.displayName[0] : "?",
+                                    style: const TextStyle(color: Colors.white),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              contact.displayName,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          contact.displayName,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -314,34 +320,42 @@ class _CallsWidgetState extends State<_CallsWidget> {
                   final contact = recents[index];
                   final imageData = contact.photoOrThumbnail;
 
-                  return GestureDetector(
-                    onTap: () => _callContact(contact),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Colors.grey[800],
-                            backgroundImage: imageData != null
-                                ? MemoryImage(imageData)
-                                : null,
-                            child: imageData == null
-                                ? Text(
-                                    contact.displayName.isNotEmpty ? contact.displayName[0] : "?",
-                                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                                  )
-                                : null,
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _callContact(contact),
+                      child: AnimatedScale(
+                        scale: 1.0,
+                        duration: const Duration(milliseconds: 100),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Colors.grey[800],
+                                backgroundImage: imageData != null
+                                    ? MemoryImage(imageData)
+                                    : null,
+                                child: imageData == null
+                                    ? Text(
+                                        contact.displayName.isNotEmpty ? contact.displayName[0] : "?",
+                                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  contact.displayName,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              contact.displayName,
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   );
@@ -428,9 +442,9 @@ class _BottomNavBarState extends State<_BottomNavBar> {
               borderRadius: BorderRadius.circular(30),
               border: Border.all(color: Colors.white.withAlpha((0.05 * 255).toInt())),
             ),
-            width: 220,
+            width: 200,
             height: 60,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
