@@ -977,20 +977,3 @@ class _ZoomButtonState extends State<_ZoomButton> {
   }
 }
 
-Widget _quickCircle(IconData icon, String label) {
-  return Column(
-    children: [
-      Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.blue.withAlpha(77), // 0.3 * 255
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.white),
-      ),
-      const SizedBox(height: 6),
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-    ],
-  );
-}
