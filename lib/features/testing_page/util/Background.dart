@@ -84,6 +84,7 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
       onMapCreated: (controller) {
         globalMapController = controller;
       },
+      rotateGesturesEnabled: true,
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,

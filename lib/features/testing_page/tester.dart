@@ -5,7 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:helmet_app/features/testing_page/util/background.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,6 +24,7 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
   bool isSearching = false;
   final FocusNode _searchFocus = FocusNode();
   Position? _currentPosition;
+  CameraPosition? _lastCameraPosition;
 
   List<dynamic> _suggestions = [];
   final TextEditingController _searchController = TextEditingController();
@@ -214,16 +214,21 @@ class _ExperimentalScreenState extends State<ExperimentalScreen> {
                   alignment: const Alignment(.92, 0.26),
                   child: _AnimatedButton(
                     borderRadius: 24,
-                    onTap: () {
-                      globalMapController?.animateCamera(
-                        CameraUpdate.newCameraPosition(
-                          CameraPosition(
-                            target: const LatLng(0, 0),
-                            zoom: 15,
-                            bearing: 45,
+                    onTap: () async {
+                      final cameraPosition = _lastCameraPosition;
+
+                      if (cameraPosition != null) {
+                        globalMapController?.animateCamera(
+                          CameraUpdate.newCameraPosition(
+                            CameraPosition(
+                              target: cameraPosition.target,
+                              zoom: cameraPosition.zoom,
+                              tilt: 45,
+                              bearing: cameraPosition.bearing + 45,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     },
                     child: const Icon(Icons.explore, color: Colors.white70),
                   ),
