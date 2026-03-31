@@ -7,7 +7,14 @@ GoogleMapController? globalMapController;
 final ValueNotifier<LatLng?> userLocationNotifier = ValueNotifier(null);
 
 class MyBackgroundContent extends StatefulWidget {
-  const MyBackgroundContent({super.key});
+  final Set<Polyline> polylines;
+  final Set<Marker> markers;
+
+  const MyBackgroundContent({
+    super.key,
+    this.polylines = const {},
+    this.markers = const {},
+  });
 
   @override
   State<MyBackgroundContent> createState() => _MyBackgroundContentState();
@@ -15,6 +22,7 @@ class MyBackgroundContent extends StatefulWidget {
 
 class _MyBackgroundContentState extends State<MyBackgroundContent> {
   LatLng? currentLocation;
+  Marker? _navigationMarker;
   StreamSubscription<Position>? _positionStream;
 
   @override
@@ -57,8 +65,23 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
       currentLocation = latLng;
       userLocationNotifier.value = latLng;
 
-      // Move camera to user
-      if (globalMapController != null) {
+      if (mounted) {
+        setState(() {
+          _navigationMarker = widget.polylines.isNotEmpty
+              ? Marker(
+                  markerId: const MarkerId("nav_arrow"),
+                  position: latLng,
+                  anchor: const Offset(0.5, 0.5),
+                  rotation: position.heading,
+                  flat: true,
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+                )
+              : null;
+        });
+      }
+
+      // Move camera only when no navigation route is active
+      if (globalMapController != null && widget.polylines.isEmpty) {
         globalMapController!.animateCamera(
           CameraUpdate.newLatLng(latLng),
         );
@@ -85,8 +108,8 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
         globalMapController = controller;
       },
       rotateGesturesEnabled: true,
-      myLocationEnabled: true,
-      myLocationButtonEnabled: false,
+      myLocationEnabled: widget.polylines.isEmpty,
+      myLocationButtonEnabled: widget.polylines.isEmpty,
       zoomControlsEnabled: false,
       mapType: MapType.normal,
       style: '''
@@ -98,14 +121,12 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
   {"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}
 ]
 ''',
-      markers: currentLocation != null
-          ? {
-              Marker(
-                markerId: const MarkerId('user'),
-                position: currentLocation!,
-              )
-            }
-          : {},
+      polylines: widget.polylines,
+      markers: {
+        if (widget.polylines.isNotEmpty && _navigationMarker != null)
+          _navigationMarker!,
+        ...widget.markers,
+      },
     );
   }
 }

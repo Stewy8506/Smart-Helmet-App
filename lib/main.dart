@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:helmet_app/features/testing_page/tester.dart';
+
+import 'package:helmet_app/features/navigation/maps.dart';
+
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 
-void main() {
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env.local");
   runApp(const MyApp());
 }
 
@@ -34,8 +40,9 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         '/grid_screen': (context) => const GridScreen(),
+        '/maps': (context) => const MapsScreen(),
       },
-      home: const ExperimentalScreen(),
+      home: const MapsScreen(),
     );
   }
 }
