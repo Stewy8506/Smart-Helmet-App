@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+
 import 'package:helmet_app/common/sizes.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+
 
 import 'package:helmet_app/features/testing_page/util/background.dart';
 import 'package:geolocator/geolocator.dart';
@@ -20,6 +23,11 @@ class _MapsScreenState extends State<MapsScreen> {
   bool isPressed = false;
   bool isSearching = false;
   final FocusNode _searchFocus = FocusNode();
+  Position? _currentPosition;
+  CameraPosition? _lastCameraPosition;
+
+  List<dynamic> _suggestions = [];
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -28,6 +36,11 @@ class _MapsScreenState extends State<MapsScreen> {
       setState(() {
         isSearching = _searchFocus.hasFocus;
       });
+    });
+    Geolocator.getLastKnownPosition().then((pos) {
+      if (pos != null) {
+        _currentPosition = pos;
+      }
     });
   }
 
@@ -38,50 +51,95 @@ class _MapsScreenState extends State<MapsScreen> {
   }
 
   Future<void> _searchLocation(String query) async {
+    final apiKey =
+        "AIzaSyDAEEbOqNnJ_Bip7X86ao-ZUDQayCE4aRI"; // replace if needed
+
     final url = Uri.parse(
-        "https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1");
+      "https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=$query&inputtype=textquery&fields=geometry&key=$apiKey",
+    );
 
     try {
-      final response = await http.get(url, headers: {
-        "User-Agent": "helmet_app"
-      });
-
+      final response = await http.get(url);
       final data = json.decode(response.body);
 
-      if (data.isNotEmpty) {
-        final lat = double.parse(data[0]['lat']);
-        final lon = double.parse(data[0]['lon']);
+      if (data['candidates'] != null && data['candidates'].isNotEmpty) {
+        final location = data['candidates'][0]['geometry']['location'];
+        final lat = location['lat'];
+        final lon = location['lng'];
+
         globalMapController?.animateCamera(
           CameraUpdate.newLatLngZoom(LatLng(lat, lon), 16),
         );
       }
     } catch (e) {
-      print("Search error: $e");
+      print("Places search error: $e");
+    }
+  }
+
+  Future<void> _fetchSuggestions(String input) async {
+    if (input.isEmpty) {
+      setState(() => _suggestions = []);
+      return;
+    }
+
+    final apiKey = "AIzaSyDAEEbOqNnJ_Bip7X86ao-ZUDQayCE4aRI";
+
+    String baseUrl =
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$input&key=$apiKey";
+
+    if (_currentPosition != null) {
+      final lat = _currentPosition!.latitude;
+      final lng = _currentPosition!.longitude;
+      baseUrl += "&location=$lat,$lng&radius=5000&components=country:in";
+    }
+
+    final url = Uri.parse(baseUrl);
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['status'] == 'OK') {
+          setState(() {
+            _suggestions = data['predictions'];
+          });
+        } else {
+          setState(() => _suggestions = []);
+          print("Autocomplete API status: ${data['status']}");
+        }
+      } else {
+        print("HTTP error: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Autocomplete error: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: Stack(
-          children: [
-            const MyBackgroundContent(),
+      body: Stack(
+        children: [
+          const MyBackgroundContent(),
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                FocusScope.of(context).unfocus();
+              },
+            ),
+          ),
 
-            LiquidGlassLayer(
-              settings: const LiquidGlassSettings(
-                thickness: 20,
-                blur: 2,
-                glassColor: Colors.black26,
-              ),
-              child: Stack(
-                  children: [
-
+          LiquidGlassLayer(
+            settings: const LiquidGlassSettings(
+              thickness: 20,
+              blur: 2,
+              glassColor: Colors.black26,
+            ),
+            child: Stack(
+              children: [
                 //Zoom Controls
                 Align(
                   alignment: const Alignment(.92, 0.72),
@@ -99,7 +157,9 @@ class _MapsScreenState extends State<MapsScreen> {
                               icon: Icons.add,
                               isTop: true,
                               onTap: () {
-                                globalMapController?.animateCamera(CameraUpdate.zoomIn());
+                                globalMapController?.animateCamera(
+                                  CameraUpdate.zoomIn(),
+                                );
                               },
                             ),
                           ),
@@ -113,7 +173,9 @@ class _MapsScreenState extends State<MapsScreen> {
                               icon: Icons.remove,
                               isTop: false,
                               onTap: () {
-                                globalMapController?.animateCamera(CameraUpdate.zoomOut());
+                                globalMapController?.animateCamera(
+                                  CameraUpdate.zoomOut(),
+                                );
                               },
                             ),
                           ),
@@ -130,8 +192,12 @@ class _MapsScreenState extends State<MapsScreen> {
                     borderRadius: 24,
                     onTap: () async {
                       try {
-                        Position position = await Geolocator.getCurrentPosition();
-                        final latLng = LatLng(position.latitude, position.longitude);
+                        Position position =
+                            await Geolocator.getCurrentPosition();
+                        final latLng = LatLng(
+                          position.latitude,
+                          position.longitude,
+                        );
                         globalMapController?.animateCamera(
                           CameraUpdate.newLatLngZoom(latLng, 16),
                         );
@@ -139,10 +205,7 @@ class _MapsScreenState extends State<MapsScreen> {
                         print("Location error: $e");
                       }
                     },
-                    child: const Icon(
-                      Icons.my_location,
-                      color: Colors.white70,
-                    ),
+                    child: const Icon(Icons.my_location, color: Colors.white70),
                   ),
                 ),
 
@@ -151,21 +214,23 @@ class _MapsScreenState extends State<MapsScreen> {
                   alignment: const Alignment(.92, 0.26),
                   child: _AnimatedButton(
                     borderRadius: 24,
-                    onTap: () {
-                      globalMapController?.animateCamera(
-                        CameraUpdate.newCameraPosition(
-                          CameraPosition(
-                            target: const LatLng(0, 0),
-                            zoom: 15,
-                            bearing: 45,
+                    onTap: () async {
+                      final cameraPosition = _lastCameraPosition;
+
+                      if (cameraPosition != null) {
+                        globalMapController?.animateCamera(
+                          CameraUpdate.newCameraPosition(
+                            CameraPosition(
+                              target: cameraPosition.target,
+                              zoom: cameraPosition.zoom,
+                              tilt: 45,
+                              bearing: cameraPosition.bearing + 45,
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     },
-                    child: const Icon(
-                      Icons.explore,
-                      color: Colors.white70,
-                    ),
+                    child: const Icon(Icons.explore, color: Colors.white70),
                   ),
                 ),
 
@@ -175,7 +240,7 @@ class _MapsScreenState extends State<MapsScreen> {
                   child: _AnimatedButton(
                     borderRadius: TSizes.backbuttonSize / 2,
                     onTap: () {
-                      print("Back button tapped");
+                      Navigator.pushNamed(context, '/grid_screen');
                     },
                     width: TSizes.backbuttonSize,
                     height: TSizes.backbuttonSize,
@@ -188,230 +253,289 @@ class _MapsScreenState extends State<MapsScreen> {
                   ),
                 ),
 
-              //Searchbar Glass (expanding)
+                //Searchbar Glass (expanding)
                 Align(
                   alignment: const Alignment(0, 0.95),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    width: 350,
-                    height: isSearching
-                        ? TSizes.searchbarGlassHeight + 250
-                        : TSizes.searchbarGlassHeight,
-                    child: LiquidGlass(
-                      shape: LiquidRoundedRectangle(
-                        borderRadius: TSizes.searchbarGlassHeight / 2,
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: TSizes.searchbarGlassHeight,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      FocusScope.of(context).requestFocus(_searchFocus);
-                                    },
-                                    child: const Icon(
-                                      Icons.search,
-                                      color: Colors.white54,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: TextField(
-                                      focusNode: _searchFocus,
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(
-                                        hintText: "Search Maps",
-                                        hintStyle: TextStyle(color: Colors.white54),
-                                        border: InputBorder.none,
+                  child: GestureDetector(
+                    onTap: () {}, // absorb taps so it doesn't collapse
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      width: 355,
+                      height: isSearching
+                          ? TSizes.searchbarGlassHeight + 250
+                          : TSizes.searchbarGlassHeight,
+                      child: LiquidGlass(
+                        shape: LiquidRoundedRectangle(
+                          borderRadius: TSizes.searchbarGlassHeight / 2,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: TSizes.searchbarGlassHeight,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Stack(
+                                        children: [
+                                          ...[
+                                            Positioned(
+                                              left: 2,
+                                              right: 6,
+                                              top: 0,
+                                              bottom: 0,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  borderRadius: BorderRadius.circular(
+                                                    TSizes.searchbarHeight / 2,
+                                                  ),
+                                                  color: Colors.grey.withAlpha(20),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              left: 12,
+                                              top: 0,
+                                              bottom: 0,
+                                              child: Center(
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    FocusScope.of(context).requestFocus(_searchFocus);
+                                                  },
+                                                  child: const Icon(
+                                                    Icons.search,
+                                                    color: Colors.white54,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              right: 20,
+                                              top: 0,
+                                              bottom: 0,
+                                              child: Center(
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    print("Microphone tapped");
+                                                  },
+                                                  child: Icon(
+                                                    Icons.mic,
+                                                    color: Colors.white54,
+                                                    size: TSizes.iconMd,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 50, right: 40),
+                                              child: TextField(
+                                                controller: _searchController,
+                                                focusNode: _searchFocus,
+                                                style: const TextStyle(color: Colors.white),
+                                                decoration: const InputDecoration(
+                                                  hintText: "Search Maps",
+                                                  hintStyle: TextStyle(color: Colors.white54),
+                                                  border: InputBorder.none,
+                                                ),
+                                                onChanged: (value) {
+                                                  Future.delayed(const Duration(milliseconds: 300), () {
+                                                    if (value == _searchController.text) {
+                                                      _fetchSuggestions(value);
+                                                    }
+                                                  });
+                                                },
+                                                onSubmitted: (value) {
+                                                  if (value.isNotEmpty) {
+                                                    _searchLocation(value);
+                                                    setState(() => _suggestions = []);
+                                                  }
+                                                  FocusScope.of(context).unfocus();
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                      onSubmitted: (value) {
-                                        if (value.isNotEmpty) {
-                                          _searchLocation(value);
-                                        }
-                                        FocusScope.of(context).unfocus();
-                                      },
-                                      onTapOutside: (_) {
-                                        FocusScope.of(context).unfocus();
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 2),
+                                      child: Align(
+                                        alignment: const Alignment(0, 0),
+                                        child: _AnimatedButton(
+                                          borderRadius: TSizes.searchbarAvatarHeight / 2,
+                                          onTap: () {
+                                            print("Avatar pressed");
+                                          },
+                                          width: TSizes.searchbarAvatarHeight,
+                                          height: TSizes.searchbarAvatarHeight,
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              TSizes.searchbarAvatarHeight / 2,
+                                            ),
+                                            child: Image.asset(
+                                              "assets/images/avatar.jpg",
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (isSearching) ...[
+                              if (_suggestions.isNotEmpty)
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {},
+                                    child: ListView.builder(
+                                      itemCount: _suggestions.length,
+                                      itemBuilder: (context, index) {
+                                        final item = _suggestions[index];
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              final description =
+                                                  item['description'];
+                                              _searchController.text =
+                                                  description;
+
+                                              setState(() {
+                                                _suggestions = [];
+                                              });
+
+                                              _searchLocation(description);
+                                              FocusScope.of(context).unfocus();
+                                            },
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 14,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withAlpha(
+                                                  15,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: Colors.white.withAlpha(
+                                                    20,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.place,
+                                                    color: Colors.white54,
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      item['description'],
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 14,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Container(
+                                                    width: 36,
+                                                    height: 36,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white
+                                                          .withAlpha(20),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.location_on,
+                                                      color: Colors.white70,
+                                                      size: 18,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
                                       },
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          if (isSearching) ...[
-                            const SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  "Places",
-                                  style: GoogleFonts.montserrat(
-                                    color: Colors.white70,
-                                    fontSize: 16,
+                                ),
+                              if (_suggestions.isEmpty) ...[
+                                const SizedBox(height: 10),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      "Places",
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.white70,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _quickCircle(Icons.home, "Home"),
-                                _quickCircle(Icons.work, "Work"),
-                                _quickCircle(Icons.add, "Add"),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _quickCircle(Icons.home, "Home"),
+                                    _quickCircle(Icons.work, "Work"),
+                                    _quickCircle(Icons.add, "Add"),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      "Your Guides",
+                                      style: GoogleFonts.montserrat(
+                                        color: Colors.white70,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ],
-                            ),
-                            const SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  "Your Guides",
-                                  style: GoogleFonts.montserrat(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ]
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-
-              //Search Bar with microphone icon
-                Align(
-                  alignment: const Alignment(-0.45, TSizes.searchBarAlignmentY),
-                  child: Container(
-                    width: TSizes.searchAreaWidth,
-                    height: TSizes.searchbarHeight,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(
-                        TSizes.searchbarHeight / 2,
-                      ),
-                      color: Colors.grey.withAlpha(20),
-                    ),
-                    child: const SizedBox(
-                      width: 330,
-                      height: TSizes.searchbarHeight,
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: const Alignment(-0.45, TSizes.searchBarAlignmentY),
-                  child: IgnorePointer(
-                    ignoring: isSearching,
-                    child: GestureDetector(
-                      onTapDown: (_) => setState(() => isPressed = true),
-                      onTapUp: (_) => setState(() => isPressed = false),
-                      onTapCancel: () => setState(() => isPressed = false),
-                      onTap: () {
-                        FocusScope.of(context).requestFocus(_searchFocus);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        transformAlignment: Alignment.center,
-                        transform: isPressed
-                            ? (Matrix4.identity()..scaleByDouble(0.97, 0.97, 1.0, 1.0))
-                            : Matrix4.identity(),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(
-                            TSizes.searchbarHeight / 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withAlpha(isPressed ? 20 : 5),
-                              blurRadius: isPressed ? 10 : 15,
-                              spreadRadius: isPressed ? 2 : 0,
-                            ),
+                            ],
                           ],
                         ),
-                        child: Container(
-                          width: TSizes.searchAreaWidth,
-                          height: TSizes.searchbarHeight,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              TSizes.searchbarHeight / 2,
-                            ),
-                            color: Colors.grey.withAlpha(20),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(width: TSizes.spaceBtwItems),
-                              SizedBox(width: 10),
-                              Text(
-                                "",
-                                style: GoogleFonts.montserrat(
-                                  color: Colors.white54,
-                                  fontSize: TSizes.fontMd,
-                                ),
-                              ),
-                              SizedBox(
-                                width: TSizes.spaceBtwSections +
-                                    TSizes.spaceBtwItems +
-                                    150,
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  FocusScope.of(context).requestFocus(_searchFocus);
-                                  print("Microphone tapped");
-                                },
-                                child: Icon(
-                                  Icons.mic,
-                                  color: Colors.white54,
-                                  size: TSizes.iconMd,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ),
                   ),
                 ),
-
-
-
-
-              //Searchbar Avatar
-                Align(
-                  alignment: const Alignment(0.80, 0.925),
-                  child: _AnimatedButton(
-                    borderRadius: TSizes.searchbarAvatarHeight / 2,
-                    onTap: () {
-                      print("Avatar pressed");
-                    },
-                    width: TSizes.searchbarAvatarHeight,
-                    height: TSizes.searchbarAvatarHeight,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        TSizes.searchbarAvatarHeight / 2,
-                      ),
-                      child: Image.asset(
-                        "assets/images/avatar.jpg",
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -560,7 +684,9 @@ class _ZoomButtonState extends State<_ZoomButton> {
             topLeft: widget.isTop ? const Radius.circular(24) : Radius.zero,
             topRight: widget.isTop ? const Radius.circular(24) : Radius.zero,
             bottomLeft: !widget.isTop ? const Radius.circular(24) : Radius.zero,
-            bottomRight: !widget.isTop ? const Radius.circular(24) : Radius.zero,
+            bottomRight: !widget.isTop
+                ? const Radius.circular(24)
+                : Radius.zero,
           ),
           boxShadow: [
             BoxShadow(
@@ -570,12 +696,7 @@ class _ZoomButtonState extends State<_ZoomButton> {
             ),
           ],
         ),
-        child: Center(
-          child: Icon(
-            widget.icon,
-            color: Colors.white70,
-          ),
-        ),
+        child: Center(child: Icon(widget.icon, color: Colors.white70)),
       ),
     );
   }
@@ -588,16 +709,13 @@ Widget _quickCircle(IconData icon, String label) {
         width: 56,
         height: 56,
         decoration: BoxDecoration(
-          color: Colors.blue.withAlpha(77),
+          color: Colors.blue.withAlpha(77), // 0.3 * 255
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white),
       ),
       const SizedBox(height: 6),
-      Text(
-        label,
-        style: const TextStyle(color: Colors.white70, fontSize: 12),
-      ),
+      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
     ],
   );
 }
