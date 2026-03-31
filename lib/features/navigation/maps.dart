@@ -588,7 +588,7 @@ Widget _quickCircle(IconData icon, String label) {
         width: 56,
         height: 56,
         decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.3),
+          color: Colors.blue.withAlpha(77),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white),

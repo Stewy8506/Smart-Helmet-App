@@ -83,7 +83,7 @@ class _GridTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: color.withAlpha(39),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withAlpha(102)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
