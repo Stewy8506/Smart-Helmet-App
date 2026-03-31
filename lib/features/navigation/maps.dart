@@ -9,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-
 import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -33,6 +32,7 @@ class _MapsScreenState extends State<MapsScreen> {
   double _lastBearing = 0;
 
   List<dynamic> _suggestions = [];
+  Timer? _debounce;
   final TextEditingController _searchController = TextEditingController();
 
   StreamSubscription<Position>? _positionStream;
@@ -54,9 +54,12 @@ class _MapsScreenState extends State<MapsScreen> {
   void initState() {
     super.initState();
     _searchFocus.addListener(() {
-      setState(() {
-        isSearching = _searchFocus.hasFocus;
-      });
+      final newState = _searchFocus.hasFocus;
+      if (newState != isSearching && mounted) {
+        setState(() {
+          isSearching = newState;
+        });
+      }
     });
     Geolocator.getLastKnownPosition().then((pos) {
       if (pos != null) {
@@ -78,9 +81,9 @@ class _MapsScreenState extends State<MapsScreen> {
     _tts.setVolume(1.0);
   }
 
-
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchFocus.dispose();
     _positionStream?.cancel();
     _tts.stop();
@@ -116,7 +119,8 @@ class _MapsScreenState extends State<MapsScreen> {
     if (_currentPosition == null) return;
 
     final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'];
-    final origin = "${_currentPosition!.latitude},${_currentPosition!.longitude}";
+    final origin =
+        "${_currentPosition!.latitude},${_currentPosition!.longitude}";
     final dest = "${destination.latitude},${destination.longitude}";
 
     final url = Uri.parse(
@@ -145,10 +149,7 @@ class _MapsScreenState extends State<MapsScreen> {
       // Zoom out to show full route preview
       if (_routePoints.isNotEmpty) {
         globalMapController?.animateCamera(
-          CameraUpdate.newLatLngBounds(
-            _getBounds(_routePoints),
-            80,
-          ),
+          CameraUpdate.newLatLngBounds(_getBounds(_routePoints), 80),
         );
       }
       final marker = Marker(
@@ -216,41 +217,42 @@ class _MapsScreenState extends State<MapsScreen> {
   void _startNavigation() {
     _positionStream?.cancel();
 
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 2,
-      ),
-    ).listen((pos) {
-      final userLatLng = LatLng(pos.latitude, pos.longitude);
-
-      final rawBearing = pos.heading;
-      final bearing = rawBearing > 0
-          ? (_lastBearing * 0.7 + rawBearing * 0.3)
-          : _lastBearing;
-
-      _lastBearing = bearing;
-
-      final offsetTarget = _offsetLatLng(userLatLng, bearing);
-
-      double speed = pos.speed;
-
-      double zoom = speed > 10 ? 17 : 18;
-      double tilt = speed > 10 ? 50 : 60;
-
-      globalMapController?.moveCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: offsetTarget,
-            zoom: zoom,
-            tilt: tilt,
-            bearing: bearing,
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 2,
           ),
-        ),
-      );
+        ).listen((pos) {
+          final userLatLng = LatLng(pos.latitude, pos.longitude);
 
-      _updateStep(userLatLng);
-    });
+          final rawBearing = pos.heading;
+          final bearing = rawBearing > 0
+              ? (_lastBearing * 0.7 + rawBearing * 0.3)
+              : _lastBearing;
+
+          _lastBearing = bearing;
+
+          final offsetTarget = _offsetLatLng(userLatLng, bearing);
+
+          double speed = pos.speed;
+
+          double zoom = speed > 10 ? 17 : 18;
+          double tilt = speed > 10 ? 50 : 60;
+
+          globalMapController?.moveCamera(
+            CameraUpdate.newCameraPosition(
+              CameraPosition(
+                target: offsetTarget,
+                zoom: zoom,
+                tilt: tilt,
+                bearing: bearing,
+              ),
+            ),
+          );
+
+          _updateStep(userLatLng);
+        });
   }
 
   LatLng _offsetLatLng(LatLng position, double heading) {
@@ -346,6 +348,7 @@ class _MapsScreenState extends State<MapsScreen> {
       };
     });
   }
+
   LatLngBounds _getBounds(List<LatLng> points) {
     double minLat = points.first.latitude;
     double maxLat = points.first.latitude;
@@ -367,7 +370,9 @@ class _MapsScreenState extends State<MapsScreen> {
 
   Future<void> _fetchSuggestions(String input) async {
     if (input.isEmpty) {
-      setState(() => _suggestions = []);
+      if (_suggestions.isNotEmpty && mounted) {
+        setState(() => _suggestions = []);
+      }
       return;
     }
 
@@ -391,8 +396,19 @@ class _MapsScreenState extends State<MapsScreen> {
         final data = json.decode(response.body);
 
         if (data['status'] == 'OK') {
+          final newList = data['predictions'];
+
+          if (!mounted) return;
+
+          if (_suggestions.length == newList.length &&
+              _suggestions.isNotEmpty &&
+              newList.isNotEmpty &&
+              _suggestions[0]['description'] == newList[0]['description']) {
+            return; // prevent useless rebuild
+          }
+
           setState(() {
-            _suggestions = data['predictions'];
+            _suggestions = newList;
           });
         } else {
           setState(() => _suggestions = []);
@@ -410,7 +426,8 @@ class _MapsScreenState extends State<MapsScreen> {
     const double itemHeight = 70;
     const double maxHeight = 500;
 
-    double calculated = TSizes.searchbarGlassHeight + (_suggestions.length * itemHeight);
+    double calculated =
+        TSizes.searchbarGlassHeight + (_suggestions.length * itemHeight);
 
     if (calculated > maxHeight) return maxHeight;
     return calculated;
@@ -422,16 +439,8 @@ class _MapsScreenState extends State<MapsScreen> {
       body: Stack(
         children: [
           // Map background with polylines overlay
-          MyBackgroundContent(polylines: _polylines,
-          markers: _markers,),
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () {
-                FocusScope.of(context).unfocus();
-              },
-            ),
-          ),
+          MyBackgroundContent(polylines: _polylines, markers: _markers),
+          const Positioned.fill(child: _DismissKeyboardLayer()),
 
           LiquidGlassLayer(
             settings: const LiquidGlassSettings(
@@ -455,7 +464,10 @@ class _MapsScreenState extends State<MapsScreen> {
                           children: [
                             const Text(
                               "Navigation",
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 6),
                             Row(
@@ -469,7 +481,9 @@ class _MapsScreenState extends State<MapsScreen> {
                                 Expanded(
                                   child: Text(
                                     _currentInstruction,
-                                    style: const TextStyle(color: Colors.white70),
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -552,7 +566,10 @@ class _MapsScreenState extends State<MapsScreen> {
                           print("Location error: $e");
                         }
                       },
-                      child: const Icon(Icons.my_location, color: Colors.white70),
+                      child: const Icon(
+                        Icons.my_location,
+                        color: Colors.white70,
+                      ),
                     ),
                   ),
 
@@ -607,24 +624,28 @@ class _MapsScreenState extends State<MapsScreen> {
 
                 // Animated search/navigation bar (Google Maps style)
                 AnimatedAlign(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeInOut,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
                   alignment: const Alignment(0, 0.95),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
                     width: 355,
                     height: (_isNavigating || _isPreviewingRoute)
                         ? 90
                         : (isSearching
-                            ? _calculateSearchHeight() + 14
-                            : TSizes.searchbarGlassHeight),
+                              ? _calculateSearchHeight() + 14
+                              : TSizes.searchbarGlassHeight),
                     child: LiquidGlass(
                       shape: LiquidRoundedRectangle(
                         borderRadius: TSizes.searchbarGlassHeight / 2,
                       ),
                       child: (_isNavigating || _isPreviewingRoute)
                           ? Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
                               child: Row(
                                 children: [
                                   GestureDetector(
@@ -639,13 +660,18 @@ class _MapsScreenState extends State<MapsScreen> {
                                       });
                                       _positionStream?.cancel();
                                     },
-                                    child: const Icon(Icons.close, color: Colors.white70),
+                                    child: const Icon(
+                                      Icons.close,
+                                      color: Colors.white70,
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           _etaText,
@@ -657,7 +683,9 @@ class _MapsScreenState extends State<MapsScreen> {
                                         ),
                                         Text(
                                           "$_distanceText • $_arrivalText",
-                                          style: const TextStyle(color: Colors.white70),
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -665,7 +693,10 @@ class _MapsScreenState extends State<MapsScreen> {
                                   if (_isPreviewingRoute)
                                     GestureDetector(
                                       onTap: _startActualNavigation,
-                                      child: const Icon(Icons.navigation, color: Colors.blueAccent),
+                                      child: const Icon(
+                                        Icons.navigation,
+                                        color: Colors.blueAccent,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -675,7 +706,8 @@ class _MapsScreenState extends State<MapsScreen> {
                                 if (isSearching)
                                   GestureDetector(
                                     onVerticalDragUpdate: (details) {
-                                      if (details.primaryDelta != null && details.primaryDelta! > 6) {
+                                      if (details.primaryDelta != null &&
+                                          details.primaryDelta! > 6) {
                                         FocusScope.of(context).unfocus();
                                         setState(() {
                                           _suggestions = [];
@@ -685,15 +717,22 @@ class _MapsScreenState extends State<MapsScreen> {
                                     },
                                     child: Center(
                                       child: AnimatedOpacity(
-                                        duration: const Duration(milliseconds: 200),
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
                                         opacity: isSearching ? 1 : 0,
                                         child: Container(
-                                          margin: const EdgeInsets.only(top: 6, bottom: 2),
+                                          margin: const EdgeInsets.only(
+                                            top: 6,
+                                            bottom: 2,
+                                          ),
                                           width: 40,
                                           height: 5,
                                           decoration: BoxDecoration(
                                             color: Colors.white38,
-                                            borderRadius: BorderRadius.circular(10),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -702,7 +741,9 @@ class _MapsScreenState extends State<MapsScreen> {
                                 SizedBox(
                                   height: TSizes.searchbarGlassHeight,
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
                                     child: Row(
                                       children: [
                                         Expanded(
@@ -715,10 +756,13 @@ class _MapsScreenState extends State<MapsScreen> {
                                                 bottom: 0,
                                                 child: Container(
                                                   decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(
-                                                      TSizes.searchbarHeight / 2,
-                                                    ),
-                                                    color: Colors.grey.withAlpha(20),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          TSizes.searchbarHeight /
+                                                              2,
+                                                        ),
+                                                    color: Colors.grey
+                                                        .withAlpha(20),
                                                   ),
                                                 ),
                                               ),
@@ -729,9 +773,16 @@ class _MapsScreenState extends State<MapsScreen> {
                                                 child: Center(
                                                   child: GestureDetector(
                                                     onTap: () {
-                                                      FocusScope.of(context).requestFocus(_searchFocus);
+                                                      FocusScope.of(
+                                                        context,
+                                                      ).requestFocus(
+                                                        _searchFocus,
+                                                      );
                                                     },
-                                                    child: const Icon(Icons.search, color: Colors.white54),
+                                                    child: const Icon(
+                                                      Icons.search,
+                                                      color: Colors.white54,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
@@ -746,34 +797,59 @@ class _MapsScreenState extends State<MapsScreen> {
                                                       // You can navigate to profile or settings later
                                                       print("Avatar tapped");
                                                     },
-                                                    child: const Icon(Icons.person, color: Colors.white70),
+                                                    child: const Icon(
+                                                      Icons.person,
+                                                      color: Colors.white70,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
                                               Padding(
-                                                padding: const EdgeInsets.only(left: 50, right: 50),
+                                                padding: const EdgeInsets.only(
+                                                  left: 50,
+                                                  right: 50,
+                                                ),
                                                 child: TextField(
                                                   controller: _searchController,
                                                   focusNode: _searchFocus,
                                                   textAlign: TextAlign.center,
-                                                  style: const TextStyle(color: Colors.white),
-                                                  decoration: const InputDecoration(
-                                                    hintText: "Search Maps    ",
-                                                    hintStyle: TextStyle(color: Colors.white54),
-                                                    border: InputBorder.none,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
                                                   ),
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        hintText:
+                                                            "Search Maps    ",
+                                                        hintStyle: TextStyle(
+                                                          color: Colors.white54,
+                                                        ),
+                                                        border:
+                                                            InputBorder.none,
+                                                      ),
                                                   onChanged: (value) {
-                                                    Future.delayed(const Duration(milliseconds: 300), () {
-                                                      if (value == _searchController.text) {
-                                                        _fetchSuggestions(value);
-                                                      }
-                                                    });
+                                                    _debounce?.cancel();
+                                                    _debounce = Timer(
+                                                      const Duration(
+                                                        milliseconds: 300,
+                                                      ),
+                                                      () {
+                                                        _fetchSuggestions(
+                                                          value,
+                                                        );
+                                                      },
+                                                    );
                                                   },
                                                   onSubmitted: (value) async {
-                                                    FocusScope.of(context).unfocus();
+                                                    FocusScope.of(
+                                                      context,
+                                                    ).unfocus();
                                                     if (value.isNotEmpty) {
-                                                      await _searchLocation(value);
-                                                      setState(() => _suggestions = []);
+                                                      await _searchLocation(
+                                                        value,
+                                                      );
+                                                      setState(
+                                                        () => _suggestions = [],
+                                                      );
                                                     }
                                                   },
                                                 ),
@@ -790,53 +866,91 @@ class _MapsScreenState extends State<MapsScreen> {
                                   if (_suggestions.isNotEmpty)
                                     Expanded(
                                       child: ListView.builder(
+                                        cacheExtent: 300,
+                                        addAutomaticKeepAlives: false,
+                                        addRepaintBoundaries: true,
                                         itemCount: _suggestions.length,
                                         itemBuilder: (context, index) {
                                           final item = _suggestions[index];
                                           return Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 6,
+                                            ),
                                             child: GestureDetector(
                                               onTap: () async {
-                                                FocusScope.of(context).unfocus();
+                                                FocusScope.of(
+                                                  context,
+                                                ).unfocus();
 
-                                                final description = item['description'];
-                                                _searchController.text = description;
+                                                final description =
+                                                    item['description'];
+                                                _searchController.text =
+                                                    description;
 
                                                 setState(() {
                                                   _suggestions = [];
                                                 });
 
-                                                await _searchLocation(description);
+                                                await _searchLocation(
+                                                  description,
+                                                );
 
                                                 final placeDetailsUrl = Uri.parse(
                                                   "https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=$description&inputtype=textquery&fields=geometry&key=${dotenv.env['GOOGLE_MAPS_API_KEY']}",
                                                 );
 
-                                                final res = await http.get(placeDetailsUrl);
-                                                final data = json.decode(res.body);
+                                                final res = await http.get(
+                                                  placeDetailsUrl,
+                                                );
+                                                final data = json.decode(
+                                                  res.body,
+                                                );
 
-                                                final loc = data['candidates'][0]['geometry']['location'];
-                                                final dest = LatLng(loc['lat'], loc['lng']);
+                                                final loc =
+                                                    data['candidates'][0]['geometry']['location'];
+                                                final dest = LatLng(
+                                                  loc['lat'],
+                                                  loc['lng'],
+                                                );
 
                                                 await _getRouteWithSteps(dest);
                                               },
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 14,
+                                                    ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.white.withAlpha(15),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  border: Border.all(color: Colors.white.withAlpha(20)),
+                                                  color: Colors.white.withAlpha(
+                                                    15,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  border: Border.all(
+                                                    color: Colors.white
+                                                        .withAlpha(20),
+                                                  ),
                                                 ),
                                                 child: Row(
                                                   children: [
-                                                    const Icon(Icons.place, color: Colors.white54, size: 20),
+                                                    const Icon(
+                                                      Icons.place,
+                                                      color: Colors.white54,
+                                                      size: 20,
+                                                    ),
                                                     const SizedBox(width: 10),
                                                     Expanded(
                                                       child: Text(
                                                         item['description'],
-                                                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 14,
+                                                        ),
                                                         maxLines: 2,
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ),
                                                   ],
@@ -1024,3 +1138,15 @@ class _ZoomButtonState extends State<_ZoomButton> {
   }
 }
 
+
+class _DismissKeyboardLayer extends StatelessWidget {
+  const _DismissKeyboardLayer();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
+    );
+  }
+}

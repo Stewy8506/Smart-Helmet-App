@@ -16,36 +16,15 @@ class GridScreen extends StatelessWidget {
             children: [
               // Maps Widget (rectangular + freely positioned)
               Align(
-                alignment: Alignment.topCenter,
+                alignment: Alignment(0, 1),
                 child: SizedBox(
                   width: double.infinity,
-                  height: 180,
+                  height: 400,
                 child: _MapsPreviewTile(
                   onTap: () {
                     Navigator.push(
                       context,
-                      PageRouteBuilder(
-                        transitionDuration: const Duration(milliseconds: 400),
-                        reverseTransitionDuration: const Duration(milliseconds: 300),
-                        pageBuilder: (context, animation, secondaryAnimation) => const MapsScreen(),
-                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                          final curved = CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeInOutCubic,
-                          );
-
-                          return FadeTransition(
-                            opacity: curved,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0, 0.05),
-                                end: Offset.zero,
-                              ).animate(curved),
-                              child: child,
-                            ),
-                          );
-                        },
-                      ),
+                      MaterialPageRoute(builder: (_) => const MapsScreen()),
                     );
                   },
                 ),
@@ -54,7 +33,7 @@ class GridScreen extends StatelessWidget {
 
               // Calls Widget
               Align(
-                alignment: Alignment.bottomLeft,
+                alignment: Alignment.topRight,
                 child: SizedBox(
                   width: MediaQuery.of(context).size.width * 0.45,
                   height: 150,
@@ -69,7 +48,7 @@ class GridScreen extends StatelessWidget {
 
               // Music Widget
               Align(
-                alignment: Alignment.bottomRight,
+                alignment: Alignment.topLeft,
                 child: SizedBox(
                   width: MediaQuery.of(context).size.width * 0.45,
                   height: 150,
@@ -141,22 +120,28 @@ class _MapsPreviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.black,
-          border: Border.all(color: Colors.blueAccent.withAlpha(120)),
-        ),
-        child: Stack(
-          children: [
-            // Real map preview using shared background
-            ClipRRect(
+      child: Hero(
+        tag: "mapHero",
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              child: IgnorePointer(
-                child: MyBackgroundContent(isPreview: true),
-              ),
+              color: Colors.black,
+              border: Border.all(color: Colors.blueAccent.withAlpha(0)),
             ),
-          ],
+            child: Stack(
+              children: [
+                // Real map preview using shared background
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: IgnorePointer(
+                    child: MyBackgroundContent(isPreview: true),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -30,6 +30,9 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
   LatLng? _lastCameraPosition;
   DateTime? _lastCameraUpdate;
 
+  bool _initialLocationSet = false;
+  LatLng? _pendingCamera;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +46,25 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
         _initLocation();
       }
     });
+  }
+
+  Future<LatLng?> _getInitialLatLng() async {
+    // Try last known first (fast)
+    final last = await Geolocator.getLastKnownPosition();
+    if (last != null) {
+      return LatLng(last.latitude, last.longitude);
+    }
+
+    // Fallback to current position with a short timeout
+    try {
+      final current = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 2),
+      );
+      return LatLng(current.latitude, current.longitude);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _initLocation() async {
@@ -59,9 +81,8 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
 
     // Preview mode: use last known location only (no live updates)
     if (widget.isPreview) {
-      final lastPosition = await Geolocator.getLastKnownPosition();
-      if (lastPosition != null) {
-        final latLng = LatLng(lastPosition.latitude, lastPosition.longitude);
+      final latLng = await _getInitialLatLng();
+      if (latLng != null) {
         currentLocation = latLng;
         userLocationNotifier.value = latLng;
 
@@ -69,6 +90,8 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
           _mapController!.moveCamera(
             CameraUpdate.newLatLngZoom(latLng, 16),
           );
+        } else {
+          _pendingCamera = latLng;
         }
 
         if (mounted) setState(() {});
@@ -76,12 +99,32 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
       return;
     }
 
+    // Get initial location once (fast + fallback)
+    if (!_initialLocationSet) {
+      final latLng = await _getInitialLatLng();
+      if (latLng != null) {
+        currentLocation = latLng;
+        userLocationNotifier.value = latLng;
+        _initialLocationSet = true;
+
+        if (_mapController != null) {
+          _mapController!.moveCamera(
+            CameraUpdate.newLatLngZoom(latLng, 16),
+          );
+        } else {
+          _pendingCamera = latLng;
+        }
+
+        if (mounted) setState(() {});
+      }
+    }
+
     _positionStream?.cancel();
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 10,
       ),
     ).listen((Position position) {
       final latLng = LatLng(position.latitude, position.longitude);
@@ -113,7 +156,17 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
           (_lastCameraUpdate == null ||
               now.difference(_lastCameraUpdate!).inMilliseconds > (widget.isPreview ? 1500 : 800));
 
-      if (_mapController != null && shouldUpdate) {
+      if (_mapController != null && (shouldUpdate || _lastCameraPosition == null)) {
+        if (_lastCameraPosition != null &&
+            Geolocator.distanceBetween(
+              _lastCameraPosition!.latitude,
+              _lastCameraPosition!.longitude,
+              latLng.latitude,
+              latLng.longitude,
+            ) < 3) {
+          return; // skip tiny movements
+        }
+
         _lastCameraPosition = latLng;
         _lastCameraUpdate = now;
 
@@ -130,7 +183,7 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
       }
 
       // Only rebuild when marker is used
-      if (!widget.isPreview && widget.polylines.isNotEmpty && mounted) {
+      if (!widget.isPreview && widget.polylines.isNotEmpty && _navigationMarker != null && mounted) {
         setState(() {});
       }
     });
@@ -139,6 +192,7 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
   @override
   void dispose() {
     _positionStream?.cancel();
+    _positionStream = null;
     super.dispose();
   }
 
@@ -154,13 +208,15 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
           _mapController = controller;
           globalMapController = controller;
 
-          if (currentLocation != null) {
+          final target = _pendingCamera ?? currentLocation;
+          if (target != null) {
             controller.moveCamera(
               CameraUpdate.newLatLngZoom(
-                currentLocation!,
+                target,
                 widget.isPreview ? 16 : 17,
               ),
             );
+            _pendingCamera = null;
           }
         },
         rotateGesturesEnabled: !widget.isPreview,
