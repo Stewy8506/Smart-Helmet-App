@@ -10,7 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 
-import 'package:helmet_app/features/testing_page/util/background.dart';
+import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:convert';
@@ -61,11 +61,23 @@ class _MapsScreenState extends State<MapsScreen> {
     Geolocator.getLastKnownPosition().then((pos) {
       if (pos != null) {
         _currentPosition = pos;
+
+        final latLng = LatLng(pos.latitude, pos.longitude);
+
+        // Move camera once map is ready
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (globalMapController != null) {
+            globalMapController!.moveCamera(
+              CameraUpdate.newLatLngZoom(latLng, 16),
+            );
+          }
+        });
       }
     });
     _tts.setSpeechRate(0.5);
     _tts.setVolume(1.0);
   }
+
 
   @override
   void dispose() {
@@ -468,7 +480,7 @@ class _MapsScreenState extends State<MapsScreen> {
                     ),
                   ),
                 //Zoom Controls
-                if (!_isNavigating)
+                if (!_isNavigating && !isSearching)
                   Align(
                     alignment: Alignment(
                       .92,
@@ -517,7 +529,7 @@ class _MapsScreenState extends State<MapsScreen> {
                   ),
 
                 //Locate Me Button
-                if (!_isNavigating)
+                if (!_isNavigating && !isSearching)
                   Align(
                     alignment: Alignment(
                       .92,
@@ -545,7 +557,7 @@ class _MapsScreenState extends State<MapsScreen> {
                   ),
 
                 // Map Rotation Toggle Button
-                if (!_isNavigating)
+                if (!_isNavigating && !isSearching)
                   Align(
                     alignment: Alignment(
                       .92,
@@ -604,7 +616,7 @@ class _MapsScreenState extends State<MapsScreen> {
                     height: (_isNavigating || _isPreviewingRoute)
                         ? 90
                         : (isSearching
-                            ? _calculateSearchHeight()
+                            ? _calculateSearchHeight() + 14
                             : TSizes.searchbarGlassHeight),
                     child: LiquidGlass(
                       shape: LiquidRoundedRectangle(
@@ -660,6 +672,33 @@ class _MapsScreenState extends State<MapsScreen> {
                             )
                           : Column(
                               children: [
+                                if (isSearching)
+                                  GestureDetector(
+                                    onVerticalDragUpdate: (details) {
+                                      if (details.primaryDelta != null && details.primaryDelta! > 6) {
+                                        FocusScope.of(context).unfocus();
+                                        setState(() {
+                                          _suggestions = [];
+                                          isSearching = false;
+                                        });
+                                      }
+                                    },
+                                    child: Center(
+                                      child: AnimatedOpacity(
+                                        duration: const Duration(milliseconds: 200),
+                                        opacity: isSearching ? 1 : 0,
+                                        child: Container(
+                                          margin: const EdgeInsets.only(top: 6, bottom: 2),
+                                          width: 40,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white38,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 SizedBox(
                                   height: TSizes.searchbarGlassHeight,
                                   child: Padding(
@@ -671,7 +710,7 @@ class _MapsScreenState extends State<MapsScreen> {
                                             children: [
                                               Positioned(
                                                 left: 2,
-                                                right: 2,
+                                                right: 53,
                                                 top: 0,
                                                 bottom: 0,
                                                 child: Container(
@@ -697,21 +736,29 @@ class _MapsScreenState extends State<MapsScreen> {
                                                 ),
                                               ),
                                               Positioned(
-                                                right: 14,
+                                                right: 2,
                                                 top: 0,
                                                 bottom: 0,
                                                 child: Center(
-                                                  child: Icon(Icons.mic, color: Colors.white54, size: TSizes.iconMd),
+                                                  child: _AnimatedAvatarButton(
+                                                    borderRadius: 24,
+                                                    onTap: () {
+                                                      // You can navigate to profile or settings later
+                                                      print("Avatar tapped");
+                                                    },
+                                                    child: const Icon(Icons.person, color: Colors.white70),
+                                                  ),
                                                 ),
                                               ),
                                               Padding(
-                                                padding: const EdgeInsets.only(left: 50, right: 40),
+                                                padding: const EdgeInsets.only(left: 50, right: 50),
                                                 child: TextField(
                                                   controller: _searchController,
                                                   focusNode: _searchFocus,
+                                                  textAlign: TextAlign.center,
                                                   style: const TextStyle(color: Colors.white),
                                                   decoration: const InputDecoration(
-                                                    hintText: "Search Maps",
+                                                    hintText: "Search Maps    ",
                                                     hintStyle: TextStyle(color: Colors.white54),
                                                     border: InputBorder.none,
                                                   ),

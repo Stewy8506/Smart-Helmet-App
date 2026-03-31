@@ -1,6 +1,6 @@
-
-
 import 'package:flutter/material.dart';
+import 'package:helmet_app/features/navigation/maps.dart';
+import 'package:helmet_app/features/navigation/util/background.dart';
 
 class GridScreen extends StatelessWidget {
   const GridScreen({super.key});
@@ -12,46 +12,73 @@ class GridScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
+          child: Stack(
             children: [
-              // Maps Widget
-              _GridTile(
-                title: "Maps",
-                icon: Icons.map,
-                color: Colors.blueAccent,
-                onTap: () {
-                  // TODO: Navigate to maps screen
-                },
+              // Maps Widget (rectangular + freely positioned)
+              Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 180,
+                child: _MapsPreviewTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        transitionDuration: const Duration(milliseconds: 400),
+                        reverseTransitionDuration: const Duration(milliseconds: 300),
+                        pageBuilder: (context, animation, secondaryAnimation) => const MapsScreen(),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          final curved = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeInOutCubic,
+                          );
+
+                          return FadeTransition(
+                            opacity: curved,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.05),
+                                end: Offset.zero,
+                              ).animate(curved),
+                              child: child,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+                ),
               ),
 
-              // Call Widget
-              _GridTile(
-                title: "Calls",
-                icon: Icons.call,
-                color: Colors.green,
-                onTap: () {
-                  // TODO: Open dialer / call screen
-                },
+              // Calls Widget
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.45,
+                  height: 150,
+                  child: _GridTile(
+                    title: "Calls",
+                    icon: Icons.call,
+                    color: Colors.green,
+                    onTap: () {},
+                  ),
+                ),
               ),
 
-              // Spotify Placeholder
-              _GridTile(
-                title: "Music",
-                icon: Icons.music_note,
-                color: Colors.deepPurple,
-                onTap: () {
-                  // TODO: Add Spotify integration later
-                },
-              ),
-
-              // Empty slot (optional future widget)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(20),
+              // Music Widget
+              Align(
+                alignment: Alignment.bottomRight,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.45,
+                  height: 150,
+                  child: _GridTile(
+                    title: "Music",
+                    icon: Icons.music_note,
+                    color: Colors.deepPurple,
+                    onTap: () {},
+                  ),
                 ),
               ),
             ],
@@ -96,6 +123,37 @@ class _GridTile extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapsPreviewTile extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MapsPreviewTile({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.black,
+          border: Border.all(color: Colors.blueAccent.withAlpha(120)),
+        ),
+        child: Stack(
+          children: [
+            // Real map preview using shared background
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: IgnorePointer(
+                child: MyBackgroundContent(isPreview: true),
               ),
             ),
           ],

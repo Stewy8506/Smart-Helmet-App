@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 
-import 'package:helmet_app/features/testing_page/util/background.dart';
+import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:convert';
