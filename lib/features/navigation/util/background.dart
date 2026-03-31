@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 GoogleMapController? globalMapController;
 final ValueNotifier<LatLng?> userLocationNotifier = ValueNotifier(null);
@@ -199,7 +200,46 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: GoogleMap(
+      child: widget.isPreview && currentLocation != null
+          ? SizedBox.expand(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.network(
+                  "https://maps.googleapis.com/maps/api/staticmap?"
+                  "center=${currentLocation!.latitude},${currentLocation!.longitude}"
+                  "&zoom=16"
+                  "&size=640x640"
+                  "&scale=2"
+                  "&maptype=roadmap"
+                  "&markers=anchor:center|icon:https://maps.google.com/mapfiles/ms/icons/blue-dot.png|${currentLocation!.latitude},${currentLocation!.longitude}"
+                  "&style=element:geometry|color:0x212121"
+                  "&style=element:labels.text.fill|color:0xa3a3a3"
+                  "&style=element:labels.text.stroke|color:0x212121"
+                  "&style=feature:road|element:geometry|color:0x2c2c2c"
+                  "&style=feature:water|element:geometry|color:0x000000"
+                  "&key=${dotenv.env['GOOGLE_MAPS_API_KEY']}",
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.high,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded) return child;
+                    return AnimatedOpacity(
+                      opacity: frame == null ? 0 : 1,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      child: child,
+                    );
+                  },
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      color: Colors.black,
+                    );
+                  },
+                ),
+              ),
+            )
+          : GoogleMap(
+        liteModeEnabled: widget.isPreview,
         initialCameraPosition: CameraPosition(
           target: currentLocation ?? const LatLng(0, 0),
           zoom: currentLocation != null ? 15 : 1,
@@ -232,7 +272,7 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
 [
   {"elementType":"geometry","stylers":[{"color":"#212121"}]},
   {"elementType":"labels.text.fill","stylers":[{"color":"#a3a3a3"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#21212130"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
   {"featureType":"road","elementType":"geometry","stylers":[{"color":"#2c2c2c"}]},
   {"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}
 ]

@@ -19,6 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      showSemanticsDebugger: false,
       title: 'Helmet App',
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -42,7 +43,7 @@ class MyApp extends StatelessWidget {
         '/grid_screen': (context) => const GridScreen(),
         '/maps': (context) => const MapsScreen(),
       },
-      home: const MapsScreen(),
+      home: const GridScreen(),
     );
   }
 }
