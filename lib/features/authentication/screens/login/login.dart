@@ -4,9 +4,22 @@ import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/common/styles/spacing_styles.dart';
 import 'package:helmet_app/common/text.dart';
 import 'package:helmet_app/features/authentication/screens/signup/signup.dart';
+import '../../controllers/auth_controller.dart';
+import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final AuthController authController = AuthController();
+
+  bool isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +50,7 @@ class LoginScreen extends StatelessWidget {
 
                 // Email Field
                 TextFormField(
+                  controller: emailController,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: "Email or username",
@@ -63,6 +77,7 @@ class LoginScreen extends StatelessWidget {
 
                 // Password Field
                 TextFormField(
+                  controller: passwordController,
                   obscureText: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
@@ -114,11 +129,50 @@ class LoginScreen extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                onPressed: () {},
-                                child: const Text(
-                                  "Sign in",
-                                  style: TextStyle(color: Colors.black),
-                                ),
+                                onPressed: isLoading
+                                    ? null
+                                    : () async {
+                                        if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Enter email and password")),
+                                          );
+                                          return;
+                                        }
+
+                                        setState(() => isLoading = true);
+
+                                        final error = await authController.login(
+                                          emailController.text.trim(),
+                                          passwordController.text.trim(),
+                                        );
+
+                                        setState(() => isLoading = false);
+
+                                        if (!mounted) return;
+
+                                        if (error != null) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(error)),
+                                          );
+                                        } else {
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const GridScreen(),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                child: isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                      )
+                                    : const Text(
+                                        "Sign in",
+                                        style: TextStyle(color: Colors.black),
+                                      ),
                               ),
                             ),
                           ),

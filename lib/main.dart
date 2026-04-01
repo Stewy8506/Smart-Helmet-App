@@ -1,14 +1,30 @@
 import 'package:flutter/material.dart';
 
 import 'package:helmet_app/features/navigation/maps.dart';
-
+import 'package:helmet_app/features/authentication/screens/login/login.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env.local");
+  print("ENV: ${dotenv.env}");
+  print("URL: ${dotenv.env['SUPABASE_URL']}");
+  print("KEY: ${dotenv.env['SUPABASE_PUBLISHABLE_KEY']}");
+
+  final url = dotenv.env['SUPABASE_URL'];
+  final key = dotenv.env['SUPABASE_PUBLISHABLE_KEY'];
+
+  if (url == null || key == null || url.isEmpty || key.isEmpty) {
+    throw Exception("Supabase ENV not loaded properly");
+  }
+
+  await Supabase.initialize(
+    url: url,
+    anonKey: key,
+  );
   runApp(const MyApp());
 }
 
@@ -43,7 +59,7 @@ class MyApp extends StatelessWidget {
         '/grid_screen': (context) => const GridScreen(),
         '/maps': (context) => const MapsScreen(),
       },
-      home: const GridScreen(),
+      home: const LoginScreen(),
     );
   }
 }

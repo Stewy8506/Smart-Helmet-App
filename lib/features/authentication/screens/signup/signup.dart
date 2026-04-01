@@ -5,9 +5,23 @@ import 'package:helmet_app/common/styles/spacing_styles.dart';
 import 'package:helmet_app/common/text.dart';
 import 'package:helmet_app/features/authentication/screens/login/login.dart';
 
+import '../../controllers/auth_controller.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+
+  bool isLoading = false;
+
+  final AuthController authController = AuthController();
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +60,13 @@ class SignUpScreen extends StatelessWidget {
 
               const SizedBox(height: TSizes.spaceBtwItems),
 
-              _inputField("Email", Icons.email),
+              _inputField("Email", Icons.email, controller: emailController),
               const SizedBox(height: 16),
 
-              _inputField("Password", Icons.lock, obscure: true),
+              _inputField("Password", Icons.lock, obscure: true, controller: passwordController),
               const SizedBox(height: 16),
 
-              _inputField("Confirm Password", Icons.lock, obscure: true),
+              _inputField("Confirm Password", Icons.lock, obscure: true, controller: confirmPasswordController),
 
               const SizedBox(height: TSizes.spaceBtwSections + 10),
 
@@ -82,11 +96,59 @@ class SignUpScreen extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                onPressed: () {},
-                                child: const Text(
-                                  "Register",
-                                  style: TextStyle(color: Colors.black),
-                                ),
+                                onPressed: isLoading
+                                    ? null
+                                    : () async {
+                                        if (emailController.text.isEmpty ||
+                                            passwordController.text.isEmpty ||
+                                            confirmPasswordController.text.isEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Fill all fields")),
+                                          );
+                                          return;
+                                        }
+
+                                        if (passwordController.text != confirmPasswordController.text) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Passwords do not match")),
+                                          );
+                                          return;
+                                        }
+
+                                        setState(() => isLoading = true);
+
+                                        final error = await authController.signUp(
+                                          emailController.text.trim(),
+                                          passwordController.text.trim(),
+                                        );
+
+                                        setState(() => isLoading = false);
+
+                                        if (!mounted) return;
+
+                                        if (error != null) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(error)),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Check your email to verify your account"),
+                                            ),
+                                          );
+                                          Navigator.pop(context);
+                                        }
+                                      },
+                                child: isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                      )
+                                    : const Text(
+                                        "Register",
+                                        style: TextStyle(color: Colors.black),
+                                      ),
                               ),
                             ),
                           ),
@@ -172,8 +234,10 @@ class SignUpScreen extends StatelessWidget {
     );
   }
 
-  Widget _inputField(String hint, IconData icon, {bool obscure = false}) {
+  Widget _inputField(String hint, IconData icon,
+      {bool obscure = false, TextEditingController? controller}) {
     return TextField(
+      controller: controller,
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(

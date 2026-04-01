@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:helmet_app/common/sizes.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
