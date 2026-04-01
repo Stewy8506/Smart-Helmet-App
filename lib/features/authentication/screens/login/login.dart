@@ -132,8 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: isLoading
                                     ? null
                                     : () async {
+                                        final messenger = ScaffoldMessenger.of(context);
+
                                         if (emailController.text.isEmpty || passwordController.text.isEmpty) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          messenger.showSnackBar(
                                             const SnackBar(content: Text("Enter email and password")),
                                           );
                                           return;
@@ -146,12 +148,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                           passwordController.text.trim(),
                                         );
 
-                                        setState(() => isLoading = false);
-
                                         if (!mounted) return;
 
+                                        setState(() => isLoading = false);
+
                                         if (error != null) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          messenger.showSnackBar(
                                             SnackBar(content: Text(error)),
                                           );
                                         } else {
