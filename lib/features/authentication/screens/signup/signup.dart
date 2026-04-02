@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/common/styles/spacing_styles.dart';
@@ -209,10 +210,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: 
                 [
-                  _socialIcon(Icons.g_mobiledata),
-                  _socialIcon(Icons.facebook),
-                  _socialIcon(Icons.apple),
-                  _socialIcon(Icons.flutter_dash),
+                  _socialIcon(Icons.g_mobiledata, provider: "google"),
+                  _socialIcon(Icons.facebook, provider: "facebook"),
+                  _socialIcon(Icons.apple, provider: "apple"),
+                  _socialIcon(Icons.code, provider: "github"),
                 ],
               ),
 
@@ -261,12 +262,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
 }
 
 
-Widget _socialIcon(IconData icon) {
+Widget _socialIcon(IconData icon, {required String provider}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          debugPrint('$icon pressed');
+        onTap: () async {
+          final supabase = Supabase.instance.client;
+
+          await supabase.auth.signInWithOAuth(
+            OAuthProvider.values.firstWhere((e) => e.name == provider),
+            redirectTo: 'helmetapp://callback',
+          );
         },
         borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
         child: Container(
