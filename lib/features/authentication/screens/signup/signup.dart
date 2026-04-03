@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/common/styles/spacing_styles.dart';
 import 'package:helmet_app/common/text.dart';
 import 'package:helmet_app/features/authentication/screens/login/login.dart';
 
-import '../../controllers/auth_controller.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,8 +19,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController confirmPasswordController = TextEditingController();
 
   bool isLoading = false;
-
-  final AuthController authController = AuthController();
 
   @override
   Widget build(BuildContext context) {
@@ -118,27 +114,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                                         setState(() => isLoading = true);
 
-                                        final error = await authController.signUp(
-                                          emailController.text.trim(),
-                                          passwordController.text.trim(),
-                                        );
+                                        await Future.delayed(const Duration(seconds: 1)); // placeholder for Firebase signup
 
                                         setState(() => isLoading = false);
 
                                         if (!mounted) return;
 
-                                        if (error != null) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text(error)),
-                                          );
-                                        } else {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text("Check your email to verify your account"),
-                                            ),
-                                          );
-                                          Navigator.pop(context);
-                                        }
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text("Account created (placeholder)"),
+                                          ),
+                                        );
+
+                                        Navigator.pop(context);
                                       },
                                 child: isLoading
                                     ? const SizedBox(
@@ -263,32 +251,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
 
 Widget _socialIcon(IconData icon, {required String provider}) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () async {
-          final supabase = Supabase.instance.client;
-
-          await supabase.auth.signInWithOAuth(
-            OAuthProvider.values.firstWhere((e) => e.name == provider),
-            redirectTo: 'helmetapp://callback',
-          );
-        },
-        borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
-        child: Container(
-          padding: const EdgeInsets.all(TSizes.iconSm + 2),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
-          ),
-          child: icon == Icons.g_mobiledata
-              ? Image.asset(
-                  'assets/icons/google.png',
-                  height: TSizes.iconMd,
-                  width: TSizes.iconMd,
-                )
-              : Icon(icon, color: Colors.black, size: TSizes.iconMd),
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: () {
+        // TODO: Implement Firebase social login
+      },
+      borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
+      child: Container(
+        padding: const EdgeInsets.all(TSizes.iconSm + 2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(TSizes.borderRadiusLg),
         ),
+        child: icon == Icons.g_mobiledata
+            ? Image.asset(
+                'assets/icons/google.png',
+                height: TSizes.iconMd,
+                width: TSizes.iconMd,
+              )
+            : Icon(icon, color: Colors.black, size: TSizes.iconMd),
       ),
-    );
-  }
+    ),
+  );
+}

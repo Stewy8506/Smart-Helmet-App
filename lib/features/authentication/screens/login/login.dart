@@ -4,7 +4,6 @@ import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/common/styles/spacing_styles.dart';
 import 'package:helmet_app/common/text.dart';
 import 'package:helmet_app/features/authentication/screens/signup/signup.dart';
-import '../../controllers/auth_controller.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,7 +16,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final AuthController authController = AuthController();
 
   bool isLoading = false;
 
@@ -143,27 +141,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                         setState(() => isLoading = true);
 
-                                        final error = await authController.login(
-                                          emailController.text.trim(),
-                                          passwordController.text.trim(),
-                                        );
+                                        await Future.delayed(const Duration(seconds: 1)); // placeholder for Firebase auth
 
                                         if (!mounted) return;
 
                                         setState(() => isLoading = false);
 
-                                        if (error != null) {
-                                          messenger.showSnackBar(
-                                            SnackBar(content: Text(error)),
-                                          );
-                                        } else {
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => const GridScreen(),
-                                            ),
-                                          );
-                                        }
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const GridScreen(),
+                                          ),
+                                        );
                                       },
                                 child: isLoading
                                     ? const SizedBox(
