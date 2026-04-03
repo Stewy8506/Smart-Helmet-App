@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:helmet_app/features/navigation/maps.dart';
-import 'package:helmet_app/features/authentication/screens/login/login.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env.local");
   runApp(const MyApp());
 }
 
