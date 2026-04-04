@@ -13,6 +13,9 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
+
 class GridScreen extends StatelessWidget {
   const GridScreen({super.key});
 
@@ -242,12 +245,12 @@ class _CallsWidgetState extends State<_CallsWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Calls",
-              style: TextStyle(
+              style: GoogleFonts.montserrat(
                 color: Colors.white,
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 10),
@@ -668,30 +671,59 @@ class _MusicWidgetState extends State<_MusicWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Music",
-              style: TextStyle(
+              style: GoogleFonts.montserrat (
                 color: Colors.white,
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
               ),
             ),
 
             const SizedBox(height: 10),
 
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.asset(
-                  "assets/images/album.jpg",
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    "assets/images/album.jpg",
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ScrollingText(
+                        text: "A trip to Saint Pablo",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        "Kanye West",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 5),
 
             Expanded(
               child: Center(
@@ -846,6 +878,105 @@ class _BatteryWidget extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ScrollingText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+
+  const _ScrollingText({
+    required this.text,
+    required this.style,
+  });
+
+  @override
+  State<_ScrollingText> createState() => _ScrollingTextState();
+}
+
+class _ScrollingTextState extends State<_ScrollingText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final textPainter = TextPainter(
+            text: TextSpan(text: widget.text, style: widget.style),
+            maxLines: 1,
+            textDirection: TextDirection.ltr,
+          )..layout();
+
+          final textWidth = textPainter.width;
+          final boxWidth = constraints.maxWidth;
+
+          // If text fits → no animation
+          if (textWidth <= boxWidth) {
+            return Text(
+              widget.text,
+              style: widget.style,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            );
+          }
+
+          const gap = 40.0;
+          final totalScrollWidth = textWidth + gap;
+
+          return AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              final dx = (1 - _controller.value) * totalScrollWidth * -1;
+              return Transform.translate(
+                offset: Offset(dx, 0),
+                child: child,
+              );
+            },
+            child: Row(
+              children: [
+                Text(
+                  widget.text,
+                  style: widget.style,
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
+                ),
+                const SizedBox(width: 40),
+                Text(
+                  widget.text,
+                  style: widget.style,
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

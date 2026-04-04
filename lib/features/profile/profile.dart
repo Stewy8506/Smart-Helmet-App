@@ -6,6 +6,7 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
+import 'package:helmet_app/features/settings/settings.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -44,13 +45,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         const SizedBox(height: TSizes.spaceBtwSections),
 
-                        Text(
-                          "Your Profile.",
-                          style: GoogleFonts.bitcountPropSingle(
-                            fontWeight: FontWeight.w300,
-                            color: Colors.white,
-                            fontSize: 38,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Your Profile.",
+                              style: GoogleFonts.bitcountPropSingle(
+                                fontWeight: FontWeight.w300,
+                                color: Colors.white,
+                                fontSize: 38,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.settings,
+                                color: Colors.white70,
+                                size: 24,
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: TSizes.spaceBtwSections + 20),
@@ -60,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: CircleAvatar(
                             radius: 60,
                             backgroundColor: Colors.white10,
-                            child: Icon(Icons.person, size: 60, color: Colors.white70),
+                            backgroundImage: AssetImage("assets/images/avatar.jpg"),
                           ),
                         ),
 
@@ -103,18 +122,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: TSizes.spaceBtwSections),
 
                         _ProfileCard(
-                          icon: Icons.settings,
-                          title: "Settings",
-                        ),
-                        _ProfileCard(
                           icon: Icons.history,
                           title: "Ride History",
                         ),
-                        _ProfileCard(
-                          icon: Icons.logout,
-                          title: "Logout",
-                        ),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Logout Button (fixed near bottom, above navbar)
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 90, // keep above glass navbar
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                // TODO: handle logout
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withAlpha(180),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Text(
+                    "Logout",
+                    style: GoogleFonts.montserrat(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
                   ),
                 ),
