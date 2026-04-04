@@ -10,6 +10,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:ui' as ui;
 
 import 'package:helmet_app/common/sizes.dart';
+import 'package:helmet_app/features/grid_screen/grid_screen.dart';
+import 'package:helmet_app/features/profile/profile.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -38,7 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Set<Polyline> _polylines = {};
 
   Future<BitmapDescriptor> _createBlueDotMarker() async {
-    const int size = 40;
+    const int size = 20;
 
     final ui.PictureRecorder recorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(recorder);
@@ -46,11 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Paint paint = Paint()..color = const Color(0xFF2196F3);
 
     // Draw circle
-    canvas.drawCircle(
-      const Offset(size / 2, size / 2),
-      size / 2.5,
-      paint,
-    );
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, paint);
 
     // Optional white border for visibility
     final Paint border = Paint()
@@ -58,16 +56,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
-    canvas.drawCircle(
-      const Offset(size / 2, size / 2),
-      size / 2.5,
-      border,
-    );
+    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, border);
 
     final img = await recorder.endRecording().toImage(size, size);
     final data = await img.toByteData(format: ui.ImageByteFormat.png);
 
-    return BitmapDescriptor.fromBytes(data!.buffer.asUint8List());
+    return BitmapDescriptor.bytes(data!.buffer.asUint8List());
   }
 
   Future<void> _loadRoute() async {
@@ -75,23 +69,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       apiKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
     );
 
-    RoutesApiResponse response =
-        await polylinePoints.getRouteBetweenCoordinatesV2(
-      request: RoutesApiRequest(
-        origin: PointLatLng(26.1918531, 78.1906922),
-        destination: PointLatLng(26.249564, 78.174351),
-        travelMode: TravelMode.driving,
-      ),
-    );
+    RoutesApiResponse response = await polylinePoints
+        .getRouteBetweenCoordinatesV2(
+          request: RoutesApiRequest(
+            origin: PointLatLng(26.1918531, 78.1906922),
+            destination: PointLatLng(26.249564, 78.174351),
+            travelMode: TravelMode.driving,
+          ),
+        );
 
     if (response.routes.isNotEmpty) {
       final points = response.routes.first.polylinePoints ?? [];
-      print("ROUTES COUNT: ${response.routes.length}");
-      print("POINTS COUNT: ${points.length}");
-
-      if (points.isEmpty) {
-        print("Polyline points are empty — check API / billing / Routes API enabled");
-      }
 
       List<LatLng> routePoints = points
           .map((point) => LatLng(point.latitude, point.longitude))
@@ -161,12 +149,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           northeast: LatLng(maxLat, maxLng),
         );
 
-        _mapController!.animateCamera(
-          CameraUpdate.newLatLngBounds(bounds, 60),
-        );
+        _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 60));
       }
-    } else {
-      print("No routes returned from API");
     }
   }
 
@@ -335,23 +319,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         height: 300,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: GoogleMap(
-                            initialCameraPosition: const CameraPosition(
-                              target: LatLng(26.22, 78.18),
-                              zoom: 12,
+                          child: IgnorePointer(
+                            child: GoogleMap(
+                              initialCameraPosition: const CameraPosition(
+                                target: LatLng(26.22, 78.18),
+                                zoom: 12,
+                              ),
+                              style: _darkMapStyle,
+                              onMapCreated: (controller) {
+                                _mapController = controller;
+                                _loadRoute();
+                              },
+                              polylines: _polylines,
+                              markers: _markers,
+                              zoomControlsEnabled: false,
+                              myLocationButtonEnabled: false,
                             ),
-                            onMapCreated: (controller) {
-                              _mapController = controller;
-                              _mapController!.setMapStyle(_darkMapStyle);
-                              _loadRoute();
-                            },
-                            polylines: _polylines,
-                            markers: _markers,
-                            zoomControlsEnabled: false,
-                            myLocationButtonEnabled: false,
                           ),
                         ),
                       ),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -379,14 +366,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onHorizontalDragUpdate: (details) {
                         if (_isSwiping) return;
 
-                        if (details.delta.dx < -5 && _selectedIndex < 2) {
+                        if (details.delta.dx > 5 && _selectedIndex < 2) {
                           _isSwiping = true;
                           HapticFeedback.lightImpact();
-                          setState(() => _selectedIndex++);
-                        } else if (details.delta.dx > 5 && _selectedIndex > 0) {
+                          setState(() {
+                            _selectedIndex++;
+                            if (_selectedIndex == 1) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const GridScreen(),
+                                ),
+                              );
+                            }
+                          });
+                        } else if (details.delta.dx < -5 &&
+                            _selectedIndex > 0) {
                           _isSwiping = true;
                           HapticFeedback.lightImpact();
-                          setState(() => _selectedIndex--);
+                          setState(() {
+                            _selectedIndex--;
+                            if (_selectedIndex == 1) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const GridScreen(),
+                                ),
+                              );
+                            }
+                          });
                         }
                       },
                       onHorizontalDragEnd: (_) {
@@ -448,6 +456,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   onTap: () {
                                     HapticFeedback.lightImpact();
                                     setState(() => _selectedIndex = 1);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const GridScreen(),
+                                      ),
+                                    );
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
@@ -471,6 +485,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   onTap: () {
                                     HapticFeedback.lightImpact();
                                     setState(() => _selectedIndex = 2);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const ProfileScreen(),
+                                      ),
+                                    );
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
@@ -490,7 +510,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                 ),
-
                               ],
                             ),
                           ],
@@ -502,6 +521,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
+
+          const SizedBox(height: TSizes.spaceBtwSections),
         ],
       ),
     );

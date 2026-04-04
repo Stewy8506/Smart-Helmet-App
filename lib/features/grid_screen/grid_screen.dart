@@ -1,10 +1,17 @@
+// TODO: Integrate with audio_service or platform channels
+// to control real device media playback
+import 'package:audio_service/audio_service.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/navigation/maps.dart';
+import 'package:helmet_app/features/dashboard/dashboard.dart';
 import 'package:helmet_app/features/navigation/util/background.dart';
+import 'package:helmet_app/features/profile/profile.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 class GridScreen extends StatelessWidget {
   const GridScreen({super.key});
@@ -12,120 +19,107 @@ class GridScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Stack(
-            children: [
-              Align(
-                alignment: Alignment(0, 0.9),
-                child: SizedBox(
-                  width: 360,
-                  height: 450,
-                  child: _MapsPreviewTile(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MapsScreen()),
-                      );
-                    },
-                  ),
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -0.3),
+                  radius: 0.45,
+                  colors: [
+                    Color.fromARGB(255, 45, 45, 45),
+                    Color.fromARGB(255, 15, 15, 15),
+                  ],
                 ),
               ),
-              SafeArea(
+              child: SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Stack(
                     children: [
-                      // Calls Widget
                       Align(
-                        alignment: Alignment.topRight,
-                        child: _CallsWidget(
-                          width: MediaQuery.of(context).size.width * 0.45,
-                          height: 300,
+                        alignment: Alignment(0, 0.7),
+                        child: SizedBox(
+                          width: 345,
+                          height: 400,
+                          child: _MapsPreviewTile(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const MapsScreen(),
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
 
-                      // Music Widget
-                      Align(
-                        alignment: Alignment.topLeft,
-                        child: _GridTile(
-                          title: "Music",
-                          icon: Icons.music_note,
-                          color: Colors.deepPurple,
-                          width: MediaQuery.of(context).size.width * 0.45,
-                          height: 150,
-                          onTap: () {},
+                      // Calls + Music
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Stack(
+                          children: [
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: Transform.translate(
+                                offset: const Offset(
+                                  24,
+                                  0,
+                                ), // adjust this value to move more/less right
+                                child: _CallsWidget(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.455,
+                                  height: 300,
+                                ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: Transform.translate(
+                                offset: const Offset(
+                                  -21,
+                                  0,
+                                ), // tweak value as needed
+                                child: _MusicWidget(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.455,
+                                  height: 180,
+                                ),
+                              ),
+                            ),
+                            // Battery widget below music
+                            Align(
+                              alignment: Alignment.topLeft,
+                              child: Transform.translate(
+                                offset: const Offset(
+                                  -21,
+                                  190,
+                                ), // position below music widget
+                                child: _BatteryWidget(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.455,
+                                  height: 110,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-
-              // 👇 MOVE NAVBAR INSIDE LiquidGlassLayer
-              Positioned(
-                bottom: 40,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: _BottomNavBar(),
-                ),
-              ),
-            ],
+            ),
+          ),
+          Positioned(
+            bottom: 18,
+            left: 0,
+            right: 0,
+            child: Center(child: _BottomNavBar()),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _GridTile extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  final double? width;
-  final double? height;
-
-  const _GridTile({
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-    this.width,
-    this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Container(
-          decoration: BoxDecoration(
-            color: color.withAlpha(39),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withAlpha(102)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 48, color: color),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -152,8 +146,6 @@ class _CallsWidgetState extends State<_CallsWidget> {
 
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
-    } else {
-      print('Could not launch dialer');
     }
   }
 
@@ -164,13 +156,9 @@ class _CallsWidgetState extends State<_CallsWidget> {
   }
 
   Future<void> _loadContacts() async {
-    print("LOAD CONTACTS START");
-
     final permission = await FlutterContacts.requestPermission(readonly: true);
-    print("Permission: $permission");
 
     if (!permission) {
-      print("Permission denied");
       return;
     }
 
@@ -180,10 +168,7 @@ class _CallsWidgetState extends State<_CallsWidget> {
       withThumbnail: true,
     );
 
-    print("Fetched contacts: ${fetched.length}");
-
     if (!mounted) {
-      print("Widget not mounted");
       return;
     }
 
@@ -195,30 +180,35 @@ class _CallsWidgetState extends State<_CallsWidget> {
       "mum",
     ];
 
-    final priorityOrder = [
-      "Sreyashi",
-    ];
+    final priorityOrder = ["Sreyashi"];
 
     setState(() {
-      contacts = fetched
-          .where((c) => c.displayName.trim().isNotEmpty)
-          .where((c) => allowedNames.any((name) =>
-              c.displayName.trim().toLowerCase() == name.toLowerCase()))
-          .toList()
-        ..sort((a, b) {
-          int aIndex = priorityOrder.indexWhere((name) =>
-              a.displayName.trim().toLowerCase() == name.toLowerCase());
-          int bIndex = priorityOrder.indexWhere((name) =>
-              b.displayName.trim().toLowerCase() == name.toLowerCase());
+      contacts =
+          fetched
+              .where((c) => c.displayName.trim().isNotEmpty)
+              .where(
+                (c) => allowedNames.any(
+                  (name) =>
+                      c.displayName.trim().toLowerCase() == name.toLowerCase(),
+                ),
+              )
+              .toList()
+            ..sort((a, b) {
+              int aIndex = priorityOrder.indexWhere(
+                (name) =>
+                    a.displayName.trim().toLowerCase() == name.toLowerCase(),
+              );
+              int bIndex = priorityOrder.indexWhere(
+                (name) =>
+                    b.displayName.trim().toLowerCase() == name.toLowerCase(),
+              );
 
-          if (aIndex == -1) aIndex = 999;
-          if (bIndex == -1) bIndex = 999;
+              if (aIndex == -1) aIndex = 999;
+              if (bIndex == -1) bIndex = 999;
 
-          return aIndex.compareTo(bIndex);
-        });
+              return aIndex.compareTo(bIndex);
+            });
     });
-
-    print("Contacts set: ${contacts.length}");
   }
 
   @override
@@ -237,18 +227,16 @@ class _CallsWidgetState extends State<_CallsWidget> {
     }
 
     final favorites = contacts.take(1).toList();
-    final recents = contacts.length > 1
-        ? contacts.skip(1).toList()
-        : [];
+    final recents = contacts.length > 1 ? contacts.skip(1).toList() : [];
 
     return SizedBox(
       width: widget.width,
       height: widget.height,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(288),
+          color: const Color(0xFF121212).withAlpha((0.55 * 255).toInt()),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withAlpha((0.15 * 255).toInt())),
+          border: Border.all(color: Colors.grey.withAlpha((0.3 * 255).toInt())),
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -256,7 +244,11 @@ class _CallsWidgetState extends State<_CallsWidget> {
           children: [
             const Text(
               "Calls",
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 10),
 
@@ -273,7 +265,7 @@ class _CallsWidgetState extends State<_CallsWidget> {
                     scale: 1.0,
                     duration: const Duration(milliseconds: 100),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -284,7 +276,9 @@ class _CallsWidgetState extends State<_CallsWidget> {
                                 : null,
                             child: imageData == null
                                 ? Text(
-                                    contact.displayName.isNotEmpty ? contact.displayName[0] : "?",
+                                    contact.displayName.isNotEmpty
+                                        ? contact.displayName[0]
+                                        : "?",
                                     style: const TextStyle(color: Colors.white),
                                   )
                                 : null,
@@ -293,7 +287,10 @@ class _CallsWidgetState extends State<_CallsWidget> {
                           Expanded(
                             child: Text(
                               contact.displayName,
-                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -340,8 +337,13 @@ class _CallsWidgetState extends State<_CallsWidget> {
                                     : null,
                                 child: imageData == null
                                     ? Text(
-                                        contact.displayName.isNotEmpty ? contact.displayName[0] : "?",
-                                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                                        contact.displayName.isNotEmpty
+                                            ? contact.displayName[0]
+                                            : "?",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                        ),
                                       )
                                     : null,
                               ),
@@ -349,7 +351,10 @@ class _CallsWidgetState extends State<_CallsWidget> {
                               Expanded(
                                 child: Text(
                                   contact.displayName,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -388,14 +393,9 @@ class _MapsPreviewTile extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: IgnorePointer(
-                  child: MyBackgroundContent(
-                    isPreview: true,
-                  ),
+                  child: MyBackgroundContent(isPreview: true),
                 ),
               ),
-
-              // 🔥 GLASS OVERLAY ON TOP
-              // Removed LiquidGlass overlay as per instructions
             ],
           ),
         ),
@@ -415,15 +415,42 @@ class _BottomNavBarState extends State<_BottomNavBar> {
   void _onSwipe(DragEndDetails details) {
     if (details.primaryVelocity == null) return;
 
+    // Add haptic feedback on swipe
+    HapticFeedback.lightImpact();
+
     if (details.primaryVelocity! < -200) {
-      // swipe left → go backwards
+      // swipe left → go backward
       if (_currentIndex > 0) {
         setState(() => _currentIndex--);
+
+        if (_currentIndex == 0) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          );
+        } else if (_currentIndex == 2) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+        }
       }
     } else if (details.primaryVelocity! > 200) {
       // swipe right → go forward
       if (_currentIndex < 2) {
         setState(() => _currentIndex++);
+
+        if (_currentIndex == 0) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const DashboardScreen()),
+          );
+        } else if (_currentIndex == 2) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+        }
       }
     }
   }
@@ -438,38 +465,130 @@ class _BottomNavBarState extends State<_BottomNavBar> {
           filter: ImageFilter.blur(sigmaX: 2.3, sigmaY: 2.3),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withAlpha((0.2 * 255).toInt()),
+              color: const Color(0xFF0F0F0F),
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withAlpha((0.05 * 255).toInt())),
+              boxShadow: [
+                // Inner shadow (top-left light)
+                BoxShadow(
+                  color: Colors.white.withAlpha(15),
+                  offset: const Offset(-2, -2),
+                  blurRadius: 6,
+                  spreadRadius: -2,
+                ),
+                // Inner shadow (bottom-right dark)
+                BoxShadow(
+                  color: Colors.black.withAlpha(200),
+                  offset: const Offset(3, 3),
+                  blurRadius: 8,
+                  spreadRadius: -2,
+                ),
+              ],
             ),
-            width: 200,
-            height: 60,
+            width: 180,
+            height: 55,
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                _NavItem(
-                  icon: Icons.grid_view,
-                  selected: _currentIndex == 0,
-                  onTap: () {
-                    setState(() => _currentIndex = 0);
-                  },
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  alignment: Alignment(
+                    _currentIndex == 0
+                        ? -1
+                        : _currentIndex == 1
+                        ? 0
+                        : 1,
+                    0,
+                  ),
+                  child: Container(
+                    width: 45,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(39),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                  ),
                 ),
-                _NavItem(
-                  icon: Icons.home,
-                  selected: _currentIndex == 1,
-                  onTap: () {
-                    setState(() => _currentIndex = 1);
-                    // TODO: Navigate to home.dart
-                  },
-                ),
-                _NavItem(
-                  icon: Icons.person,
-                  selected: _currentIndex == 2,
-                  onTap: () {
-                    setState(() => _currentIndex = 2);
-                    // TODO: Navigate to profile.dart
-                  },
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() => _currentIndex = 0);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const DashboardScreen(),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(6.0),
+                        child: AnimatedScale(
+                          scale: _currentIndex == 0 ? 1.2 : 0.8,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutBack,
+                          child: Icon(
+                            Icons.directions_bike,
+                            color: _currentIndex == 0
+                                ? Colors.white
+                                : Colors.white54,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 25),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() => _currentIndex = 1);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(6.0),
+                        child: AnimatedScale(
+                          scale: _currentIndex == 1 ? 1.2 : 0.8,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutBack,
+                          child: Icon(
+                            Icons.explore_outlined,
+                            color: _currentIndex == 1
+                                ? Colors.white
+                                : Colors.white54,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 25),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() => _currentIndex = 2);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileScreen(),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(6.0),
+                        child: AnimatedScale(
+                          scale: _currentIndex == 2 ? 1.2 : 0.8,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutBack,
+                          child: Icon(
+                            Icons.person_outline,
+                            color: _currentIndex == 2
+                                ? Colors.white
+                                : Colors.white54,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -480,39 +599,252 @@ class _BottomNavBarState extends State<_BottomNavBar> {
   }
 }
 
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
+class _MusicWidget extends StatefulWidget {
+  final double width;
+  final double height;
 
-  const _NavItem({
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
+  const _MusicWidget({required this.width, required this.height});
+
+  @override
+  State<_MusicWidget> createState() => _MusicWidgetState();
+}
+
+class _MusicWidgetState extends State<_MusicWidget> {
+  late final AudioHandler _audioHandler;
+  bool isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAudioHandler();
+  }
+
+  Future<void> _initAudioHandler() async {
+    _audioHandler = await AudioService.init(
+      builder: () => AudioPlayerHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.ryanheise.audio_service.channel',
+        androidNotificationChannelName: 'Audio playback',
+        androidNotificationOngoing: true,
+      ),
+    );
+
+    _audioHandler.playbackState.listen((state) {
+      if (!mounted) return;
+      setState(() {
+        isPlaying = state.playing;
+      });
+    });
+  }
+
+  Future<void> _togglePlay() async {
+    HapticFeedback.lightImpact();
+
+    final playbackState = await _audioHandler.playbackState.first;
+
+    if (playbackState.playing) {
+      await _audioHandler.pause();
+    } else {
+      await _audioHandler.play();
+    }
+
+    setState(() {
+      isPlaying = !playbackState.playing;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: Container(
         decoration: BoxDecoration(
-          color: selected ? Colors.white.withAlpha(40) : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: selected? [
-            BoxShadow(
-              color: Colors.white.withAlpha(20),
-              blurRadius: 10,
-              spreadRadius: 2
-            )
-          ] : [],
+          color: const Color(0xFF121212).withAlpha((0.55 * 255).toInt()),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.withAlpha((0.2 * 255).toInt())),
         ),
-        child: Icon(
-          icon,
-          color: selected ? Colors.white : Colors.white54,
-          size: selected ? 30 : 25,
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Music",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  "assets/images/album.jpg",
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            Expanded(
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        await _audioHandler.skipToPrevious();
+                      },
+                      icon: const Icon(
+                        Icons.skip_previous,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _togglePlay,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withAlpha(30),
+                        ),
+                        child: Icon(
+                          isPlaying ? Icons.pause : Icons.play_arrow,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        await _audioHandler.skipToNext();
+                      },
+                      icon: const Icon(Icons.skip_next, color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AudioPlayerHandler extends BaseAudioHandler {
+  @override
+  Future<void> play() async {
+    // TODO: connect to actual player (just_audio)
+    playbackState.add(
+      playbackState.value.copyWith(
+        playing: true,
+        processingState: AudioProcessingState.ready,
+      ),
+    );
+  }
+
+  @override
+  Future<void> pause() async {
+    playbackState.add(playbackState.value.copyWith(playing: false));
+  }
+
+  @override
+  Future<void> skipToNext() async {}
+
+  @override
+  Future<void> skipToPrevious() async {}
+}
+
+// --- Battery Widget ---
+class _BatteryWidget extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const _BatteryWidget({required this.width, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF121212).withAlpha((0.55 * 255).toInt()),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.withAlpha((0.2 * 255).toInt())),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Battery",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: TSizes.spaceBtwItems),
+
+            // Phone Battery
+            Row(
+              children: [
+                const Icon(Icons.phone_iphone, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                const Text(
+                  "Phone",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const Spacer(),
+                const Text(
+                  "78%",
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            // Helmet Battery (always full + charging)
+            Row(
+              children: [
+                const Icon(
+                  Icons.safety_check,
+                  color: Colors.greenAccent,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  "Helmet",
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const Spacer(),
+                Row(
+                  children: const [
+                    SizedBox(width: 8),
+                    Icon(Icons.bolt, color: Colors.greenAccent, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      "100%",
+                      style: TextStyle(color: Colors.greenAccent, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
