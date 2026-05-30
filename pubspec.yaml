@@ -45,7 +45,7 @@ dependencies:
   url_launcher: ^6.2.5
   flutter_polyline_points: ^3.1.0
   audio_service: ^0.18.12
-  spotify_sdk: ^2.3.0
+  spotify_sdk: 3.0.2
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

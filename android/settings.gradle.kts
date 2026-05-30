@@ -24,3 +24,5 @@ plugins {
 }
 
 include(":app")
+include(":spotify-app-remote")
+include(":spotify-auth")

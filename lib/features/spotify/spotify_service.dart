@@ -2,14 +2,37 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
+import 'package:spotify_sdk/models/connection_status.dart';
+import 'package:spotify_sdk/models/player_state.dart';
 
 class SpotifyService {
   static final SpotifyService instance = SpotifyService._();
-  SpotifyService._();
+  
+  SpotifyService._() {
+    // Keep _isConnected status updated reactively
+    SpotifySdk.subscribeConnectionStatus().listen(
+      (status) {
+        _isConnected = status.connected;
+        debugPrint('Spotify connection status changed: ${_isConnected ? "Connected" : "Disconnected"}');
+      },
+      onError: (e) {
+        _isConnected = false;
+        debugPrint('Spotify connection status error: $e');
+      },
+    );
+  }
 
   bool _isConnected = false;
 
   bool get isConnected => _isConnected;
+
+  Stream<ConnectionStatus> subscribeConnectionStatus() {
+    return SpotifySdk.subscribeConnectionStatus();
+  }
+
+  Stream<PlayerState> subscribePlayerState() {
+    return SpotifySdk.subscribePlayerState();
+  }
 
   Future<bool> connect() async {
     try {
@@ -19,18 +42,30 @@ class SpotifyService {
         return false;
       }
 
+      debugPrint('Attempting Spotify connection with clientId: ${clientId.substring(0, 8)}...');
+      debugPrint('Redirect URL: helmetapp://callback');
+
+      // Try minimal connection first (no scopes) to isolate auth issues
       final result = await SpotifySdk.connectToSpotifyRemote(
         clientId: clientId,
         redirectUrl: 'helmetapp://callback',
       );
+      debugPrint('Spotify connectToSpotifyRemote result: $result');
       _isConnected = result;
       return result;
     } on PlatformException catch (e) {
-      debugPrint('Spotify connection failed: ${e.message}');
+      debugPrint('Spotify connection failed!');
+      debugPrint('Error Code: ${e.code}');
+      debugPrint('Error Message: ${e.message}');
+      debugPrint('Error Details: ${e.details}');
       _isConnected = false;
       return false;
     } on MissingPluginException {
       debugPrint('Spotify SDK not implemented on this platform');
+      _isConnected = false;
+      return false;
+    } catch (e) {
+      debugPrint('Unexpected error during Spotify connection: $e');
       _isConnected = false;
       return false;
     }
@@ -87,3 +122,4 @@ class SpotifyService {
     }
   }
 }
+

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
 
 import 'package:helmet_app/features/navigation/maps.dart';
@@ -13,7 +14,11 @@ Future<void> main() async {
   // Initiate connection to Spotify on app start
   SpotifyService.instance.connect();
   
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
