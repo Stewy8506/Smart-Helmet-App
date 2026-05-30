@@ -4,6 +4,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
+val envProps = Properties()
+val envFile = file("../../.env.local")
+if (envFile.exists()) {
+    envProps.load(FileInputStream(envFile))
+}
+
 android {
     namespace = "com.example.helmet_app"
     compileSdk = flutter.compileSdkVersion ?: 36
@@ -27,6 +36,9 @@ android {
         targetSdk = flutter.targetSdkVersion?: 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = envProps.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
+        manifestPlaceholders["SPOTIFY_CLIENT_ID"] = envProps.getProperty("SPOTIFY_CLIENT_ID") ?: ""
     }
 
     buildTypes {
