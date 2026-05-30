@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+import 'dart:ui';
 
 import '../voice_assistant_service.dart';
 import 'voice_overlay.dart';
@@ -57,6 +57,7 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
     final service = VoiceAssistantService.instance;
     if (service.state.value == VoiceState.listening || service.state.value == VoiceState.processing || service.state.value == VoiceState.speaking) {
       service.stopListening();
+      service.state.value = VoiceState.idle;
     } else {
       service.startListening();
       showGeneralDialog(
@@ -100,23 +101,33 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
                   ),
                 ],
               ),
-              child: LiquidGlass(
-                shape: LiquidRoundedRectangle(borderRadius: 24),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Center(
-                    child: isProcessing 
-                      ? const SizedBox(
-                          width: 20, 
-                          height: 20, 
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                        )
-                      : Icon(
-                          isListening ? Icons.mic : (isSpeaking ? Icons.volume_up : Icons.mic_none),
-                          color: isListening ? Colors.redAccent : Colors.white,
-                          size: 24,
-                        ),
+              child: ClipOval(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withAlpha(40),
+                      border: Border.all(
+                        color: Colors.white.withAlpha(60),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: isProcessing 
+                        ? const SizedBox(
+                            width: 24, 
+                            height: 24, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                          )
+                        : Icon(
+                            isListening ? Icons.mic : (isSpeaking ? Icons.volume_up : Icons.mic_none),
+                            color: isListening ? Colors.redAccent : Colors.white,
+                            size: 28,
+                          ),
+                    ),
                   ),
                 ),
               ),
