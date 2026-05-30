@@ -7,6 +7,7 @@ import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
 import 'package:helmet_app/features/settings/settings.dart';
+import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -161,6 +162,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
+          ),
+
+          Positioned(
+            right: 20,
+            bottom: 85,
+            child: const VoiceFAB(),
           ),
 
           // Navbar

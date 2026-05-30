@@ -11,12 +11,14 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 
 class MapsScreen extends StatefulWidget {
-  const MapsScreen({super.key});
+  final String? initialDestination;
+  const MapsScreen({super.key, this.initialDestination});
 
   @override
   State<MapsScreen> createState() => _MapsScreenState();
@@ -52,6 +54,14 @@ class _MapsScreenState extends State<MapsScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialDestination != null) {
+      _searchController.text = widget.initialDestination!;
+      isSearching = true;
+      _fetchSuggestions(widget.initialDestination!);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FocusScope.of(context).requestFocus(_searchFocus);
+      });
+    }
     _searchFocus.addListener(() {
       final newState = _searchFocus.hasFocus;
       if (newState != isSearching && mounted) {
@@ -440,6 +450,12 @@ class _MapsScreenState extends State<MapsScreen> {
           // Map background with polylines overlay
           MyBackgroundContent(polylines: _polylines, markers: _markers),
           const Positioned.fill(child: _DismissKeyboardLayer()),
+
+          Positioned(
+            left: 20,
+            bottom: 240, 
+            child: const VoiceFAB(),
+          ),
 
           LiquidGlassLayer(
             settings: const LiquidGlassSettings(
