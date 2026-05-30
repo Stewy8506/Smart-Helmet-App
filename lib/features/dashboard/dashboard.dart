@@ -12,6 +12,7 @@ import 'dart:ui' as ui;
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/profile/profile.dart';
+import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -345,6 +346,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ), // Container
+
+          Positioned(
+            right: 20,
+            bottom: 85,
+            child: const VoiceFAB(),
+          ),
 
           LiquidGlassLayer(
             settings: const LiquidGlassSettings(

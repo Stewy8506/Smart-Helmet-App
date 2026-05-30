@@ -34,15 +34,15 @@ dependencies:
   google_fonts: ^8.0.2
   video_player: ^2.8.2
   smooth_page_indicator: ^2.0.1
-  latlong2: ^0.9.1
+  latlong2: ^0.10.1
   geolocator: ^14.0.2
   liquid_glass_renderer: ^0.2.0-dev.4
   webview_flutter: ^4.0.7
-  package_info_plus: 9.0.0
+  package_info_plus: ^9.0.1
   google_maps_flutter: ^2.6.0
   flutter_tts: ^4.2.5
   speech_to_text: ^7.3.0
-  flutter_contacts: ^1.1.7
+  flutter_contacts: ^2.2.0
   url_launcher: ^6.2.5
   flutter_polyline_points: ^3.1.0
   audio_service: ^0.18.12
@@ -53,6 +53,7 @@ dependencies:
   flutter_dotenv: ^6.0.0
   firebase_core: ^4.6.0
   firebase_auth: ^6.3.0
+  battery_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:

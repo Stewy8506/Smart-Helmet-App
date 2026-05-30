@@ -12,6 +12,8 @@ import 'package:helmet_app/features/profile/profile.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
+import 'package:helmet_app/features/voice_assistant/audio_bridge.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -117,6 +119,11 @@ class GridScreen extends StatelessWidget {
             ),
           ),
           Positioned(
+            right: 20,
+            bottom: 85,
+            child: const VoiceFAB(),
+          ),
+          Positioned(
             bottom: 18,
             left: 0,
             right: 0,
@@ -159,16 +166,14 @@ class _CallsWidgetState extends State<_CallsWidget> {
   }
 
   Future<void> _loadContacts() async {
-    final permission = await FlutterContacts.requestPermission(readonly: true);
+    final permission = await FlutterContacts.permissions.request(PermissionType.read);
 
-    if (!permission) {
+    if (permission != PermissionStatus.granted) {
       return;
     }
 
-    final fetched = await FlutterContacts.getContacts(
-      withProperties: true,
-      withPhoto: true,
-      withThumbnail: true,
+    final fetched = await FlutterContacts.getAll(
+      properties: {ContactProperty.name, ContactProperty.phone, ContactProperty.photoThumbnail},
     );
 
     if (!mounted) {
@@ -188,22 +193,22 @@ class _CallsWidgetState extends State<_CallsWidget> {
     setState(() {
       contacts =
           fetched
-              .where((c) => c.displayName.trim().isNotEmpty)
+              .where((c) => (c.displayName ?? "").trim().isNotEmpty)
               .where(
                 (c) => allowedNames.any(
                   (name) =>
-                      c.displayName.trim().toLowerCase() == name.toLowerCase(),
+                      (c.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
                 ),
               )
               .toList()
             ..sort((a, b) {
               int aIndex = priorityOrder.indexWhere(
                 (name) =>
-                    a.displayName.trim().toLowerCase() == name.toLowerCase(),
+                    (a.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
               );
               int bIndex = priorityOrder.indexWhere(
                 (name) =>
-                    b.displayName.trim().toLowerCase() == name.toLowerCase(),
+                    (b.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
               );
 
               if (aIndex == -1) aIndex = 999;
@@ -257,7 +262,7 @@ class _CallsWidgetState extends State<_CallsWidget> {
 
             // Favorites (top 3)
             ...favorites.map((contact) {
-              final imageData = contact.photoOrThumbnail;
+              final imageData = contact.photo?.thumbnail;
 
               return Material(
                 color: Colors.transparent,
@@ -279,8 +284,8 @@ class _CallsWidgetState extends State<_CallsWidget> {
                                 : null,
                             child: imageData == null
                                 ? Text(
-                                    contact.displayName.isNotEmpty
-                                        ? contact.displayName[0]
+                                    (contact.displayName ?? "").isNotEmpty
+                                        ? (contact.displayName ?? "")[0]
                                         : "?",
                                     style: const TextStyle(color: Colors.white),
                                   )
@@ -289,7 +294,7 @@ class _CallsWidgetState extends State<_CallsWidget> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              contact.displayName,
+                              contact.displayName ?? "",
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -318,7 +323,7 @@ class _CallsWidgetState extends State<_CallsWidget> {
                 itemCount: recents.length,
                 itemBuilder: (context, index) {
                   final contact = recents[index];
-                  final imageData = contact.photoOrThumbnail;
+                  final imageData = contact.photo?.thumbnail;
 
                   return Material(
                     color: Colors.transparent,
@@ -340,8 +345,8 @@ class _CallsWidgetState extends State<_CallsWidget> {
                                     : null,
                                 child: imageData == null
                                     ? Text(
-                                        contact.displayName.isNotEmpty
-                                            ? contact.displayName[0]
+                                        (contact.displayName ?? "").isNotEmpty
+                                            ? (contact.displayName ?? "")[0]
                                             : "?",
                                         style: const TextStyle(
                                           color: Colors.white,
@@ -353,7 +358,7 @@ class _CallsWidgetState extends State<_CallsWidget> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  contact.displayName,
+                                  contact.displayName ?? "",
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -631,6 +636,8 @@ class _MusicWidgetState extends State<_MusicWidget> {
         androidNotificationOngoing: true,
       ),
     );
+    
+    AudioBridge.instance.setHandler(_audioHandler);
 
     _audioHandler.playbackState.listen((state) {
       if (!mounted) return;
