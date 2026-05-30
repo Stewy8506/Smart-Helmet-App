@@ -13,11 +13,11 @@
 
         <meta-data
             android:name="com.spotify.sdk.android.CLIENT_ID"
-            android:value="0ec7815cd621413dbd2dad06f74b8d9a"/>
+            android:value="${SPOTIFY_CLIENT_ID}"/>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDAEEbOqNnJ_Bip7X86ao-ZUDQayCE4aRI"/>
+            android:value="${GOOGLE_MAPS_API_KEY}"/>
 
         <activity
             android:name=".MainActivity"
@@ -59,6 +59,7 @@
 
     <!-- Queries -->
     <queries>
+        <package android:name="com.spotify.music" />
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
