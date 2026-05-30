@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:battery_plus/battery_plus.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:helmet_app/features/voice_assistant/audio_bridge.dart';
 import 'voice_assistant_service.dart';
 import 'command_parser.dart';
 import '../navigation/maps.dart';
@@ -59,27 +61,41 @@ class IntentRouter {
 
       case VoiceCommand.playMusic:
         _voiceService.speak("Resuming playback");
-        // Audio control can be hooked up here
+        await AudioBridge.instance.play();
         break;
 
       case VoiceCommand.pauseMusic:
         _voiceService.speak("Pausing music");
+        await AudioBridge.instance.pause();
         break;
 
       case VoiceCommand.nextTrack:
         _voiceService.speak("Skipping to next track");
+        await AudioBridge.instance.skipToNext();
         break;
 
       case VoiceCommand.previousTrack:
         _voiceService.speak("Going to previous track");
+        await AudioBridge.instance.skipToPrevious();
         break;
 
       case VoiceCommand.batteryStatus:
-        _voiceService.speak("Phone battery is 78 percent. Helmet battery is 100 percent.");
+        final level = await Battery().batteryLevel;
+        _voiceService.speak("Phone battery is $level percent. Helmet battery is 100 percent.");
         break;
 
       case VoiceCommand.speed:
-        _voiceService.speak("Your current speed is 0 kilometers per hour.");
+        try {
+          final pos = await Geolocator.getLastKnownPosition();
+          if (pos != null) {
+            final speedKmh = (pos.speed * 3.6).round();
+            _voiceService.speak("Your current speed is $speedKmh kilometers per hour.");
+          } else {
+            _voiceService.speak("I don't have a GPS signal right now.");
+          }
+        } catch (e) {
+          _voiceService.speak("I couldn't get your speed.");
+        }
         break;
 
       case VoiceCommand.unknown:

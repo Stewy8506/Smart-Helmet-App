@@ -57,6 +57,27 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
     super.dispose();
   }
 
+  Widget _buildHintChip(String text) {
+    return Container(
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(20),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withAlpha(40)),
+      ),
+      child: Center(
+        child: Text(
+          text,
+          style: GoogleFonts.montserrat(
+            color: Colors.white70,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,7 +174,30 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
                     ),
                   ),
 
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 40),
+                  
+                  if (state == VoiceState.listening)
+                    AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          children: [
+                            _buildHintChip("Navigate to..."),
+                            _buildHintChip("Call [name]"),
+                            _buildHintChip("Play music"),
+                            _buildHintChip("Battery status"),
+                            _buildHintChip("What's my speed?"),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                  if (state == VoiceState.listening)
+                    const SizedBox(height: 40),
 
                   // Hint text
                   Text(

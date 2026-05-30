@@ -16,6 +16,7 @@ class VoiceAssistantService {
 
   bool _isInitialized = false;
   Timer? _silenceTimer;
+  Timer? _processingTimer;
 
   VoiceAssistantService._();
 
@@ -91,10 +92,24 @@ class VoiceAssistantService {
     if (state.value != VoiceState.listening) return;
     _silenceTimer?.cancel();
     state.value = VoiceState.processing;
-    // The UI will now show "Processing...". The IntentRouter will handle parsing.
+    
+    // Safety fallback: if processing gets stuck, reset after 5 seconds
+    _processingTimer?.cancel();
+    _processingTimer = Timer(const Duration(seconds: 5), () {
+      if (state.value == VoiceState.processing) {
+        resetToIdle();
+      }
+    });
+  }
+
+  void resetToIdle() {
+    state.value = VoiceState.idle;
+    _silenceTimer?.cancel();
+    _processingTimer?.cancel();
   }
 
   Future<void> speak(String text) async {
+    _processingTimer?.cancel();
     state.value = VoiceState.speaking;
     await _tts.speak(text);
   }
@@ -120,6 +135,7 @@ class VoiceAssistantService {
 
   void dispose() {
     _silenceTimer?.cancel();
+    _processingTimer?.cancel();
     _stt.cancel();
     _tts.stop();
   }

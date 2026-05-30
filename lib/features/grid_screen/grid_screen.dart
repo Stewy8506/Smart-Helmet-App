@@ -13,6 +13,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
+import 'package:helmet_app/features/voice_assistant/audio_bridge.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
@@ -635,6 +636,8 @@ class _MusicWidgetState extends State<_MusicWidget> {
         androidNotificationOngoing: true,
       ),
     );
+    
+    AudioBridge.instance.setHandler(_audioHandler);
 
     _audioHandler.playbackState.listen((state) {
       if (!mounted) return;

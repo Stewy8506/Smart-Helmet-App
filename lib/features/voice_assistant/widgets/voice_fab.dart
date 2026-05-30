@@ -57,7 +57,7 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
     final service = VoiceAssistantService.instance;
     if (service.state.value == VoiceState.listening || service.state.value == VoiceState.processing || service.state.value == VoiceState.speaking) {
       service.stopListening();
-      service.state.value = VoiceState.idle;
+      service.resetToIdle();
     } else {
       service.startListening();
       showGeneralDialog(
