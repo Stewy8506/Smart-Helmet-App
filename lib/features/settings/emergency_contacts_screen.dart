@@ -23,9 +23,12 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   Future<void> _loadData() async {
     _selectedNames = SettingsService.instance.emergencyContactNames.toList();
 
-    final permission = await FlutterContacts.requestPermission(readonly: true);
-    if (permission) {
-      _allContacts = await FlutterContacts.getContacts(withProperties: true);
+    // Use permission_handler if needed, but grid_screen uses this:
+    final permission = await FlutterContacts.permissions.request(PermissionType.read);
+    if (permission == PermissionStatus.granted) {
+      _allContacts = await FlutterContacts.getAll(
+        properties: {ContactProperty.name, ContactProperty.phone},
+      );
     }
     setState(() {
       _isLoading = false;
@@ -58,7 +61,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               itemCount: _allContacts.length,
               itemBuilder: (context, index) {
                 final contact = _allContacts[index];
-                final name = contact.displayName;
+                final name = contact.displayName ?? 'Unknown';
                 final isSelected = _selectedNames.contains(name);
 
                 return ListTile(
