@@ -12,6 +12,7 @@ import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/profile/profile.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
+import 'package:helmet_app/features/hardware/mock_helmet_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -43,6 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _initLocation();
+    MockHelmetService.instance.start();
   }
 
   Future<void> _initLocation() async {
@@ -103,57 +105,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: TSizes.spaceBtwSections + 20),
 
                       // Helmet Image
-                      Center(
-                        child: Align(
-                          alignment: const Alignment(
-                            0,
-                            0,
-                          ), // adjust to move whole component
-                          child: Stack(
-                            alignment: Alignment.center,
+                      ValueListenableBuilder<HelmetTelemetry>(
+                        valueListenable: MockHelmetService.instance.telemetry,
+                        builder: (context, telemetry, child) {
+                          final battColor = telemetry.batteryPercent > 50 
+                            ? Colors.greenAccent 
+                            : telemetry.batteryPercent > 20 
+                              ? Colors.orangeAccent 
+                              : Colors.redAccent;
+                          
+                          return Column(
                             children: [
-                              Align(
-                                alignment: Alignment.center,
-                                child: SizedBox(
-                                  width: 300,
-                                  height: 300,
-                                  child: CircularProgressIndicator(
-                                    value: 1,
-                                    strokeWidth: 12,
-                                    backgroundColor: Colors.grey,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      Colors.greenAccent.withAlpha(150),
-                                    ),
+                              Center(
+                                child: Align(
+                                  alignment: const Alignment(0, 0),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.center,
+                                        child: SizedBox(
+                                          width: 300,
+                                          height: 300,
+                                          child: CircularProgressIndicator(
+                                            value: telemetry.batteryPercent / 100.0,
+                                            strokeWidth: 12,
+                                            backgroundColor: Colors.grey,
+                                            valueColor: AlwaysStoppedAnimation(battColor.withAlpha(150)),
+                                          ),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: const Alignment(0.15, 0),
+                                        child: Image.asset("assets/images/helmet.png", height: 220),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              Align(
-                                alignment: const Alignment(
-                                  0.15,
-                                  0,
-                                ), // tweak to adjust helmet inside the ring
-                                child: Image.asset(
-                                  "assets/images/helmet.png",
-                                  height: 220,
+                              const SizedBox(height: 12),
+                              Center(
+                                child: Text(
+                                  "${telemetry.batteryPercent}% Battery",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.montserrat(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Center(
-                        child: Text(
-                          "~ ∞ hours",
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.montserrat(
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white70,
-                            fontSize: 16,
-                          ),
-                        ),
+                          );
+                        },
                       ),
 
                       TweenAnimationBuilder<int>(
@@ -199,25 +203,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                       const SizedBox(height: TSizes.spaceBtwItems + 5),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: const [
-                          _StatItem(
-                            icon: Icons.route,
-                            label: "11.5",
-                            sub: "Kilometers",
-                          ),
-                          _StatItem(
-                            icon: Icons.favorite,
-                            label: "97.4",
-                            sub: "Avg. HR",
-                          ),
-                          _StatItem(
-                            icon: Icons.local_fire_department,
-                            label: "37",
-                            sub: "Avg. Temp.",
-                          ),
-                        ],
+                      ValueListenableBuilder<HelmetTelemetry>(
+                        valueListenable: MockHelmetService.instance.telemetry,
+                        builder: (context, telemetry, child) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              const _StatItem(
+                                icon: Icons.route,
+                                label: "11.5",
+                                sub: "Kilometers",
+                              ),
+                              _StatItem(
+                                icon: Icons.favorite,
+                                label: "${telemetry.heartRate}",
+                                sub: "Avg. HR",
+                              ),
+                              _StatItem(
+                                icon: Icons.local_fire_department,
+                                label: "${telemetry.temperature}",
+                                sub: "Avg. Temp.",
+                              ),
+                            ],
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 20),

@@ -10,6 +10,8 @@ import 'package:helmet_app/features/weather/weather_service.dart';
 import 'voice_assistant_service.dart';
 import 'command_parser.dart';
 import '../navigation/maps.dart';
+import 'package:helmet_app/features/sos/crash_overlay.dart';
+import 'package:telephony/telephony.dart';
 
 class IntentRouter {
   final VoiceAssistantService _voiceService;
@@ -140,8 +142,23 @@ class IntentRouter {
         break;
 
       case VoiceCommand.readMessages:
-        // TODO: Implement actual SMS reading
-        _voiceService.speak("You have no new messages.");
+        _voiceService.speak("Checking messages.");
+        try {
+          final telephony = Telephony.instance;
+          final messages = await telephony.getInboxSms(
+            columns: [SmsColumn.ADDRESS, SmsColumn.BODY],
+            sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
+          );
+
+          if (messages.isNotEmpty) {
+            final latest = messages.first;
+            _voiceService.speak("You have a message from ${latest.address}. It says: ${latest.body}");
+          } else {
+            _voiceService.speak("You have no new messages.");
+          }
+        } catch (e) {
+          _voiceService.speak("I couldn't read your messages right now.");
+        }
         break;
 
       case VoiceCommand.replyMessage:
@@ -149,8 +166,14 @@ class IntentRouter {
         break;
 
       case VoiceCommand.emergencySOS:
-        _voiceService.speak("Emergency SOS activated. Sending your location to emergency contacts.");
-        // TODO: Implement actual SMS sending
+        _voiceService.speak("Crash alert triggered. Tap cancel to stop the SOS.");
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            opaque: false,
+            pageBuilder: (BuildContext context, _, __) => const CrashOverlay(),
+          ),
+        );
         break;
 
       case VoiceCommand.unknown:
