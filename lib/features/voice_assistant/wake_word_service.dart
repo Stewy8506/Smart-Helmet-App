@@ -1,39 +1,68 @@
 import 'package:flutter/foundation.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:async';
 import 'voice_assistant_service.dart';
+import 'native_voice_channel.dart';
 
 class WakeWordService {
   static final WakeWordService instance = WakeWordService._();
   WakeWordService._();
 
-  final SpeechToText _stt = SpeechToText();
-  bool _isListening = false;
+  bool _isRunning = false;   // True when actively listening for wake words
+  bool _isPaused = false;    // True when main voice assistant has taken over
   bool _isInitialized = false;
-  bool _isPaused = false;
   Timer? _restartTimer;
+  StreamSubscription? _eventSubscription;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    _isInitialized = await _stt.initialize(
-      onError: (val) {
-        // Automatically restart if an error (like a timeout) occurs
+    _isInitialized = true; // Mark early to prevent re-entry
+
+    await NativeVoiceChannel.initializeStt();
+    
+    _eventSubscription?.cancel();
+    _eventSubscription = NativeVoiceChannel.events.listen(_onEvent);
+  }
+
+  void _onEvent(Map<String, dynamic> event) {
+    // Ignore all events if we're paused or not running
+    if (_isPaused || !_isRunning) return;
+
+    final type = event['type'] as String?;
+
+    if (type == 'status') {
+      if (event['value'] == 'notListening') {
+        // The recognizer session ended (either results, error, or timeout).
+        // Schedule a restart to keep listening for wake words.
         _scheduleRestart();
-      },
-      onStatus: (val) {
-        if (val == 'notListening' && _isListening) {
-          _scheduleRestart();
-        }
-      },
-    );
+      }
+    } else if (type == 'result') {
+      final text = (event['text'] as String?)?.toLowerCase() ?? '';
+      if (text.contains('hey helmet') || text.contains('hello helmet')) {
+        debugPrint("WakeWordService: Wake word detected in '$text'");
+        // Hand off to the main voice assistant.
+        // pause() sets _isPaused=true and cancels our mic session.
+        // Then we tell the voice assistant to start its own session.
+        _isPaused = true;
+        _isRunning = false;
+        _restartTimer?.cancel();
+        // Cancel our listening session — the voice assistant will start its own.
+        NativeVoiceChannel.cancelListening();
+        // Small delay to let the cancel propagate before the voice assistant starts.
+        Future.delayed(const Duration(milliseconds: 150), () {
+          VoiceAssistantService.instance.startListening();
+        });
+      }
+    }
+    // We intentionally ignore 'error' events here.
+    // Errors (like ERROR_NO_MATCH = 7) are followed by 'notListening',
+    // which triggers _scheduleRestart above. No special handling needed.
   }
 
   void _scheduleRestart() {
-    if (!_isListening) return;
+    if (!_isRunning || _isPaused) return;
     _restartTimer?.cancel();
-    // Brief delay to allow the microphone hardware to release before restarting
-    _restartTimer = Timer(const Duration(milliseconds: 500), () {
-      if (_isListening && !_stt.isListening) {
+    _restartTimer = Timer(const Duration(milliseconds: 800), () {
+      if (_isRunning && !_isPaused) {
         _startInternal();
       }
     });
@@ -41,17 +70,21 @@ class WakeWordService {
 
   Future<void> startListening() async {
     if (!_isInitialized) await initialize();
-    _isListening = true;
+    _isRunning = true;
     _isPaused = false;
     _startInternal();
   }
 
   void pause() {
+    debugPrint("WakeWordService: paused");
     _isPaused = true;
-    stopListening();
+    _isRunning = false;
+    _restartTimer?.cancel();
+    NativeVoiceChannel.cancelListening();
   }
 
   void resume() {
+    debugPrint("WakeWordService: resumed");
     _isPaused = false;
     startListening();
   }
@@ -65,33 +98,21 @@ class WakeWordService {
       return;
     }
 
-    _stt.listen(
-      onResult: (result) async {
-        final text = result.recognizedWords.toLowerCase();
-        if (text.contains('hey helmet') || text.contains('hello helmet')) {
-          debugPrint("Wake word detected: $text");
-          pause(); // Pause wake word service
-          await _stt.stop();
-          await Future.delayed(const Duration(milliseconds: 300)); // Let mic release
-          // Trigger the main voice assistant!
-          VoiceAssistantService.instance.startListening();
-        }
-      },
-      listenMode: ListenMode.dictation,
-      partialResults: true,
-      cancelOnError: true,
-    );
+    debugPrint("WakeWordService: starting STT for wake word detection");
+    NativeVoiceChannel.startListening();
   }
 
   Future<void> stopListening() async {
-    _isListening = false;
+    _isRunning = false;
     _restartTimer?.cancel();
-    await _stt.stop();
+    await NativeVoiceChannel.cancelListening();
   }
 
   void dispose() {
-    _isListening = false;
+    _isRunning = false;
+    _isPaused = true;
     _restartTimer?.cancel();
-    _stt.cancel();
+    _eventSubscription?.cancel();
+    NativeVoiceChannel.cancelListening();
   }
 }

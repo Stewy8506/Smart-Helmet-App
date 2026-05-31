@@ -59,8 +59,10 @@ class _MyBackgroundContentState extends State<MyBackgroundContent> {
     // Fallback to current position with a short timeout
     try {
       final current = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.low,
-        timeLimit: const Duration(seconds: 2),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 2),
+        ),
       );
       return LatLng(current.latitude, current.longitude);
     } catch (_) {

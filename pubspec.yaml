@@ -39,8 +39,6 @@ dependencies:
   flutter_riverpod: ^2.5.1
   package_info_plus: ^9.0.1
   google_maps_flutter: ^2.6.0
-  flutter_tts: ^4.2.5
-  speech_to_text: ^7.3.0
   flutter_contacts: ^2.2.0
   url_launcher: ^6.2.5
   flutter_polyline_points: ^3.1.0

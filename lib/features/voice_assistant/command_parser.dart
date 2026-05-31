@@ -63,7 +63,7 @@ class CommandParser {
     if (text.contains('read messages') || text.contains('read my messages') || text.contains('new messages')) {
       return VoiceIntent(command: VoiceCommand.readMessages, rawText: rawText);
     }
-    if (text.contains('reply') || text.contains('send message')) {
+    if (text.contains('reply') || text.contains('send message') || text == 'yes' || text == 'yeah' || text == 'sure') {
       return VoiceIntent(command: VoiceCommand.replyMessage, rawText: rawText);
     }
 

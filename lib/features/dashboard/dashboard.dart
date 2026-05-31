@@ -6,7 +6,6 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'dart:ui' as ui;
 
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';

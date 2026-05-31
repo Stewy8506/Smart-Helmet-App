@@ -19,6 +19,23 @@ class IntentRouter {
   IntentRouter(this._voiceService);
 
   Future<void> execute(VoiceIntent intent, BuildContext context) async {
+    // Check if we are awaiting dictation for an SMS reply
+    if (_voiceService.conversationContext['awaitingDictation'] == true) {
+      final address = _voiceService.conversationContext['lastSmsAddress'] as String?;
+      if (address != null && intent.rawText.isNotEmpty) {
+        _voiceService.speak("Sending: ${intent.rawText}");
+        try {
+          await Telephony.instance.sendSms(to: address, message: intent.rawText);
+        } catch (e) {
+          _voiceService.speak("Failed to send message.");
+        }
+      } else {
+        _voiceService.speak("Cancelling reply.");
+      }
+      _voiceService.conversationContext['awaitingDictation'] = false;
+      return;
+    }
+
     switch (intent.command) {
       case VoiceCommand.navigate:
         final place = intent.params['place'];
@@ -142,7 +159,6 @@ class IntentRouter {
         break;
 
       case VoiceCommand.readMessages:
-        _voiceService.speak("Checking messages.");
         try {
           final telephony = Telephony.instance;
           final messages = await telephony.getInboxSms(
@@ -152,17 +168,25 @@ class IntentRouter {
 
           if (messages.isNotEmpty) {
             final latest = messages.first;
-            _voiceService.speak("You have a message from ${latest.address}. It says: ${latest.body}");
+            _voiceService.conversationContext['lastSmsAddress'] = latest.address;
+            _voiceService.speak("You have a message from ${latest.address}. It says: ${latest.body}. Would you like to reply?", expectFollowUp: true);
           } else {
             _voiceService.speak("You have no new messages.");
           }
         } catch (e) {
-          _voiceService.speak("I couldn't read your messages right now.");
+          debugPrint("SMS read error: $e");
+          _voiceService.speak("I couldn't read your messages. Please check SMS permissions.");
         }
         break;
 
       case VoiceCommand.replyMessage:
-        _voiceService.speak("I am sorry, dictating replies is not yet fully supported.");
+        final address = _voiceService.conversationContext['lastSmsAddress'] as String?;
+        if (address != null && address.isNotEmpty) {
+          _voiceService.conversationContext['awaitingDictation'] = true;
+          _voiceService.speak("What should I say?", expectFollowUp: true);
+        } else {
+          _voiceService.speak("There is no recent message to reply to.");
+        }
         break;
 
       case VoiceCommand.emergencySOS:
@@ -171,7 +195,7 @@ class IntentRouter {
           context,
           PageRouteBuilder(
             opaque: false,
-            pageBuilder: (BuildContext context, _, __) => const CrashOverlay(),
+            pageBuilder: (BuildContext context, _, animation) => const CrashOverlay(),
           ),
         );
         break;
