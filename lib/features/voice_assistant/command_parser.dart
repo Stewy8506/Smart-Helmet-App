@@ -5,6 +5,8 @@ enum VoiceCommand {
   pauseMusic,
   nextTrack,
   previousTrack,
+  switchSpotify,
+  switchLocal,
   batteryStatus,
   speed,
   location,
@@ -67,7 +69,14 @@ class CommandParser {
       return VoiceIntent(command: VoiceCommand.replyMessage, rawText: rawText);
     }
 
-    // 5. Music Controls
+    // 5. Music Controls & Sources
+    if (text.contains('play on spotify') || text.contains('switch to spotify') || text.contains('use spotify')) {
+      return VoiceIntent(command: VoiceCommand.switchSpotify, rawText: rawText);
+    }
+    if (text.contains('switch to local') || text.contains('play local') || text.contains('use local')) {
+      return VoiceIntent(command: VoiceCommand.switchLocal, rawText: rawText);
+    }
+
     if (text.contains('play music') || text.contains('resume music') || text.contains('start playing') || text.contains('put on music') || text == 'play' || text == 'resume') {
       return VoiceIntent(command: VoiceCommand.playMusic, rawText: rawText);
     }

@@ -5,17 +5,12 @@ import 'package:helmet_app/features/dashboard/dashboard.dart';
 
 import 'package:helmet_app/features/navigation/maps.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
-import 'package:helmet_app/features/music/local_audio_service.dart';
 import 'package:helmet_app/features/voice_assistant/wake_word_service.dart';
 import 'package:helmet_app/features/settings/settings_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env.local");
-  
-  // Request permissions and load songs
-  await LocalAudioService.instance.requestPermissions();
-  await LocalAudioService.instance.loadSongs();
   
   // Initialize background wake word listener
   await WakeWordService.instance.initialize();
