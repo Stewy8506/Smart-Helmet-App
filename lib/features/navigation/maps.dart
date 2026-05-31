@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:helmet_app/common/sizes.dart';
 
@@ -12,6 +11,8 @@ import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
+import 'package:helmet_app/features/voice_assistant/voice_assistant_service.dart';
+import 'package:helmet_app/features/profile/profile.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
@@ -49,7 +50,6 @@ class _MapsScreenState extends State<MapsScreen> {
   String _etaText = "";
   String _distanceText = "";
   String _arrivalText = "";
-  final FlutterTts _tts = FlutterTts();
 
   @override
   void initState() {
@@ -86,8 +86,6 @@ class _MapsScreenState extends State<MapsScreen> {
         });
       }
     });
-    _tts.setSpeechRate(0.5);
-    _tts.setVolume(1.0);
   }
 
   @override
@@ -95,7 +93,6 @@ class _MapsScreenState extends State<MapsScreen> {
     _debounce?.cancel();
     _searchFocus.dispose();
     _positionStream?.cancel();
-    _tts.stop();
     super.dispose();
   }
 
@@ -120,7 +117,7 @@ class _MapsScreenState extends State<MapsScreen> {
         );
       }
     } catch (e) {
-      print("Places search error: $e");
+      debugPrint("Places search error: $e");
     }
   }
 
@@ -298,7 +295,7 @@ class _MapsScreenState extends State<MapsScreen> {
           _currentInstruction = instruction;
         });
 
-        _tts.speak(instruction);
+        VoiceAssistantService.instance.speak(instruction);
       }
     }
 
@@ -344,7 +341,7 @@ class _MapsScreenState extends State<MapsScreen> {
       polyline.add(LatLng(lat / 1E5, lng / 1E5));
     }
 
-    print("ROUTE POINTS: ${polyline.length}");
+    debugPrint("ROUTE POINTS: ${polyline.length}");
     setState(() {
       _routePoints = polyline;
       _polylines = {
@@ -421,13 +418,13 @@ class _MapsScreenState extends State<MapsScreen> {
           });
         } else {
           setState(() => _suggestions = []);
-          print("Autocomplete API status: ${data['status']}");
+          debugPrint("Autocomplete API status: ${data['status']}");
         }
       } else {
-        print("HTTP error: ${response.statusCode}");
+        debugPrint("HTTP error: ${response.statusCode}");
       }
     } catch (e) {
-      print("Autocomplete error: $e");
+      debugPrint("Autocomplete error: $e");
     }
   }
 
@@ -578,7 +575,7 @@ class _MapsScreenState extends State<MapsScreen> {
                             CameraUpdate.newLatLngZoom(latLng, 16),
                           );
                         } catch (e) {
-                          print("Location error: $e");
+                          debugPrint("Location error: $e");
                         }
                       },
                       child: const Icon(
@@ -809,8 +806,12 @@ class _MapsScreenState extends State<MapsScreen> {
                                                   child: _AnimatedAvatarButton(
                                                     borderRadius: 24,
                                                     onTap: () {
-                                                      // You can navigate to profile or settings later
-                                                      print("Avatar tapped");
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) => const ProfileScreen(),
+                                                        ),
+                                                      );
                                                     },
                                                     child: const Icon(
                                                       Icons.person,
@@ -881,7 +882,6 @@ class _MapsScreenState extends State<MapsScreen> {
                                   if (_suggestions.isNotEmpty)
                                     Expanded(
                                       child: ListView.builder(
-                                        cacheExtent: 300,
                                         addAutomaticKeepAlives: false,
                                         addRepaintBoundaries: true,
                                         itemCount: _suggestions.length,

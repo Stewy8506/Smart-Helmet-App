@@ -1,22 +1,22 @@
-import 'package:helmet_app/features/spotify/spotify_service.dart';
+import 'package:helmet_app/features/music/local_audio_service.dart';
 
 class AudioBridge {
   static final AudioBridge instance = AudioBridge._();
   AudioBridge._();
 
   Future<void> play() async {
-    await SpotifyService.instance.play();
+    await LocalAudioService.instance.play();
   }
 
   Future<void> pause() async {
-    await SpotifyService.instance.pause();
+    await LocalAudioService.instance.pause();
   }
 
   Future<void> skipToNext() async {
-    await SpotifyService.instance.skipNext();
+    await LocalAudioService.instance.skipToNext();
   }
 
   Future<void> skipToPrevious() async {
-    await SpotifyService.instance.skipPrevious();
+    await LocalAudioService.instance.skipToPrevious();
   }
 }

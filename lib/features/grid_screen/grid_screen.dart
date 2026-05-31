@@ -1,12 +1,9 @@
-// TODO: Integrate with audio_service or platform channels
-// to control real device media playback
 import 'dart:ui';
-import 'package:spotify_sdk/spotify_sdk.dart';
-import 'package:spotify_sdk/models/player_state.dart';
-import 'package:spotify_sdk/models/connection_status.dart';
-import 'package:helmet_app/features/spotify/spotify_service.dart';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:on_audio_query/on_audio_query.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:helmet_app/features/music/local_audio_service.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/navigation/maps.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
@@ -14,7 +11,7 @@ import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:helmet_app/features/profile/profile.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
+import 'package:helmet_app/features/settings/settings_service.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -166,70 +163,51 @@ class _CallsWidgetState extends State<_CallsWidget> {
     _loadContacts();
   }
 
-  Future<void> _loadContacts() async {
-    final permission = await FlutterContacts.permissions.request(PermissionType.read);
+  String _normalizePhone(String phone) =>
+      phone.replaceAll(RegExp(r'[\s\-\(\)\+]'), '');
 
-    if (permission != PermissionStatus.granted) {
+  Future<void> _loadContacts() async {
+    final whitelist = SettingsService.instance.contactWhitelist;
+    if (whitelist.isEmpty) {
+      // No contacts configured — show empty state without requesting permissions
+      if (mounted) setState(() {});
       return;
     }
+
+    final permission = await FlutterContacts.permissions.request(PermissionType.read);
+    if (permission != PermissionStatus.granted) return;
 
     final fetched = await FlutterContacts.getAll(
       properties: {ContactProperty.name, ContactProperty.phone, ContactProperty.photoThumbnail},
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    final allowedNames = [
-      "Sreyashi",
-      "Sagnik RCCIIT",
-      "Anwita",
-      "Subhrodip RCCIIT",
-      "mum",
-    ];
-
-    final priorityOrder = ["Sreyashi"];
+    // Match by normalized phone number — reliable even if names differ
+    final allowedPhones = whitelist.map((c) => _normalizePhone(c.phone)).toSet();
 
     setState(() {
-      contacts =
-          fetched
-              .where((c) => (c.displayName ?? "").trim().isNotEmpty)
-              .where(
-                (c) => allowedNames.any(
-                  (name) =>
-                      (c.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
-                ),
-              )
-              .toList()
-            ..sort((a, b) {
-              int aIndex = priorityOrder.indexWhere(
-                (name) =>
-                    (a.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
-              );
-              int bIndex = priorityOrder.indexWhere(
-                (name) =>
-                    (b.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
-              );
-
-              if (aIndex == -1) aIndex = 999;
-              if (bIndex == -1) bIndex = 999;
-
-              return aIndex.compareTo(bIndex);
-            });
+      contacts = fetched
+          .where((c) => c.phones.isNotEmpty)
+          .where((c) => allowedPhones.contains(_normalizePhone(c.phones.first.number)))
+          .toList();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final whitelist = SettingsService.instance.contactWhitelist;
     if (contacts.isEmpty) {
       return SizedBox(
         width: widget.width,
         height: widget.height,
-        child: const Center(
+        child: Center(
           child: Text(
-            "No contacts found",
-            style: TextStyle(color: Colors.white54),
+            whitelist.isEmpty
+                ? "Add contacts in\nSettings → Emergency Contacts"
+                : "No matching contacts found",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
           ),
         ),
       );
@@ -619,8 +597,8 @@ class _MusicWidget extends StatefulWidget {
 }
 
 class _MusicWidgetState extends State<_MusicWidget> {
-  Widget _buildAlbumArt(dynamic imageUri) {
-    if (imageUri == null) {
+  Widget _buildAlbumArt(int? id) {
+    if (id == null) {
       return Container(
         width: 60,
         height: 60,
@@ -632,43 +610,21 @@ class _MusicWidgetState extends State<_MusicWidget> {
       );
     }
 
-    return FutureBuilder<Uint8List?>(
-      future: SpotifySdk.getImage(
-        imageUri: imageUri,
-        dimension: ImageDimension.small,
+    return QueryArtworkWidget(
+      id: id,
+      type: ArtworkType.AUDIO,
+      artworkWidth: 60,
+      artworkHeight: 60,
+      artworkBorder: BorderRadius.circular(12),
+      nullArtworkWidget: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.music_note, color: Colors.white54),
       ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.memory(
-              snapshot.data!,
-              width: 60,
-              height: 60,
-              fit: BoxFit.cover,
-            ),
-          );
-        }
-
-        return Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: Colors.grey[800],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Colors.white54),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -705,7 +661,7 @@ class _MusicWidgetState extends State<_MusicWidget> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Spotify Disconnected",
+                    "No music files found",
                     style: GoogleFonts.montserrat(
                       color: Colors.white70,
                       fontSize: 12,
@@ -716,31 +672,13 @@ class _MusicWidgetState extends State<_MusicWidget> {
               ),
             ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () async {
-                HapticFeedback.lightImpact();
-                await SpotifyService.instance.connect();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1DB954),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 36),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                "Connect Spotify",
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildConnectedNoTrackUI(bool isPlaying) {
+  Widget _buildPlayerUI(SongModel track, bool isPlaying) {
     return SizedBox(
       width: widget.width,
       height: widget.height,
@@ -766,139 +704,14 @@ class _MusicWidgetState extends State<_MusicWidget> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.music_note,
-                    color: Colors.white54,
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        "No track playing",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        "Open Spotify app",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 5),
-            Expanded(
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: () async {
-                        HapticFeedback.lightImpact();
-                        await SpotifyService.instance.skipPrevious();
-                      },
-                      icon: const Icon(
-                        Icons.skip_previous,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () async {
-                        HapticFeedback.lightImpact();
-                        if (isPlaying) {
-                          await SpotifyService.instance.pause();
-                        } else {
-                          await SpotifyService.instance.play();
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withAlpha(30),
-                        ),
-                        child: Icon(
-                          isPlaying ? Icons.pause : Icons.play_arrow,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        HapticFeedback.lightImpact();
-                        await SpotifyService.instance.skipNext();
-                      },
-                      icon: const Icon(Icons.skip_next, color: Colors.white70),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlayerUI(dynamic track, bool isPlaying) {
-    return SizedBox(
-      width: widget.width,
-      height: widget.height,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF121212).withAlpha((0.55 * 255).toInt()),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.withAlpha((0.2 * 255).toInt())),
-        ),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Music",
-              style: GoogleFonts.montserrat(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _buildAlbumArt(track.imageUri),
+                _buildAlbumArt(track.id),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _ScrollingText(
-                        text: track.name ?? "Unknown Title",
+                        text: track.title,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
@@ -907,7 +720,7 @@ class _MusicWidgetState extends State<_MusicWidget> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        track.artist?.name ?? "Unknown Artist",
+                        track.artist ?? "Unknown Artist",
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 11,
@@ -929,7 +742,7 @@ class _MusicWidgetState extends State<_MusicWidget> {
                     IconButton(
                       onPressed: () async {
                         HapticFeedback.lightImpact();
-                        await SpotifyService.instance.skipPrevious();
+                        await LocalAudioService.instance.skipToPrevious();
                       },
                       icon: const Icon(
                         Icons.skip_previous,
@@ -940,9 +753,9 @@ class _MusicWidgetState extends State<_MusicWidget> {
                       onTap: () async {
                         HapticFeedback.lightImpact();
                         if (isPlaying) {
-                          await SpotifyService.instance.pause();
+                          await LocalAudioService.instance.pause();
                         } else {
-                          await SpotifyService.instance.play();
+                          await LocalAudioService.instance.play();
                         }
                       },
                       child: AnimatedContainer(
@@ -962,7 +775,7 @@ class _MusicWidgetState extends State<_MusicWidget> {
                     IconButton(
                       onPressed: () async {
                         HapticFeedback.lightImpact();
-                        await SpotifyService.instance.skipNext();
+                        await LocalAudioService.instance.skipToNext();
                       },
                       icon: const Icon(Icons.skip_next, color: Colors.white70),
                     ),
@@ -978,26 +791,17 @@ class _MusicWidgetState extends State<_MusicWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<ConnectionStatus>(
-      stream: SpotifyService.instance.subscribeConnectionStatus(),
-      builder: (context, connectionSnapshot) {
-        final isConnected = connectionSnapshot.data?.connected ?? SpotifyService.instance.isConnected;
-
-        if (!isConnected) {
+    return ValueListenableBuilder<SongModel?>(
+      valueListenable: LocalAudioService.instance.currentSong,
+      builder: (context, track, child) {
+        if (track == null) {
           return _buildDisconnectedUI();
         }
 
         return StreamBuilder<PlayerState>(
-          stream: SpotifyService.instance.subscribePlayerState(),
+          stream: LocalAudioService.instance.playerStateStream,
           builder: (context, playerSnapshot) {
-            final playerState = playerSnapshot.data;
-            final track = playerState?.track;
-            final isPlaying = playerState != null && !playerState.isPaused;
-
-            if (playerState == null || track == null) {
-              return _buildConnectedNoTrackUI(isPlaying);
-            }
-
+            final isPlaying = playerSnapshot.data?.playing ?? false;
             return _buildPlayerUI(track, isPlaying);
           },
         );

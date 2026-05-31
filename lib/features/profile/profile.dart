@@ -7,6 +7,7 @@ import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
 import 'package:helmet_app/features/settings/settings.dart';
+import 'package:helmet_app/features/settings/settings_service.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -19,6 +20,63 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   int _selectedIndex = 2;
   bool _isSwiping = false;
+
+  void _editProfile() {
+    final nameController = TextEditingController(text: SettingsService.instance.userName);
+    final subController = TextEditingController(text: SettingsService.instance.userSubtitle);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF222222),
+          title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  labelStyle: TextStyle(color: Colors.white54),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: subController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Subtitle',
+                  labelStyle: TextStyle(color: Colors.white54),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () async {
+                final nav = Navigator.of(context);
+                await SettingsService.instance.setUserName(nameController.text);
+                await SettingsService.instance.setUserSubtitle(subController.text);
+                if (mounted) {
+                  setState(() {});
+                  nav.pop();
+                }
+              },
+              child: const Text('Save', style: TextStyle(color: Colors.blueAccent)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,12 +145,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 16),
 
                         Center(
-                          child: Text(
-                            "Anuvab Das",
-                            style: GoogleFonts.montserrat(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              fontSize: 18,
+                          child: GestureDetector(
+                            onTap: _editProfile,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  SettingsService.instance.userName,
+                                  style: GoogleFonts.montserrat(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.edit, size: 16, color: Colors.white54),
+                              ],
                             ),
                           ),
                         ),
@@ -101,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         Center(
                           child: Text(
-                            "Rider • Explorer",
+                            SettingsService.instance.userSubtitle,
                             style: GoogleFonts.montserrat(
                               color: Colors.white54,
                               fontSize: 12,
@@ -114,9 +182,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: const [
-                            _ProfileStat(label: "124", sub: "Trips"),
-                            _ProfileStat(label: "1.2k", sub: "KM"),
-                            _ProfileStat(label: "87%", sub: "Safety"),
+                            _ProfileStat(label: "—", sub: "Trips"),
+                            _ProfileStat(label: "—", sub: "KM"),
+                            _ProfileStat(label: "—", sub: "Safety"),
                           ],
                         ),
 
@@ -142,7 +210,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.lightImpact();
-                // TODO: handle logout
+                // Navigate back to dashboard (auth will handle proper logout later)
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                  (route) => false,
+                );
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),

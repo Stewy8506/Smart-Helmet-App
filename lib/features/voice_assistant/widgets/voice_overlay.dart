@@ -15,6 +15,7 @@ class VoiceOverlay extends StatefulWidget {
 class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late IntentRouter _router;
+  bool _isExecuting = false;
 
   @override
   void initState() {
@@ -29,25 +30,27 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
   }
 
   void _onStateChange() async {
-    if (!mounted) return;
+    if (!mounted || _isExecuting) return;
     final state = VoiceAssistantService.instance.state.value;
 
     if (state == VoiceState.processing) {
+      _isExecuting = true;
       final rawText = VoiceAssistantService.instance.recognizedText.value;
       if (rawText.isNotEmpty) {
         final intent = CommandParser.parse(rawText);
         // Execute the intent
         await _router.execute(intent, context);
       } else {
-        VoiceAssistantService.instance.speak("I didn't catch that");
+        await VoiceAssistantService.instance.speak("I didn't catch that");
       }
+      _isExecuting = false;
     } else if (state == VoiceState.idle) {
       // Auto-dismiss when back to idle
-      if (Navigator.canPop(context)) {
+      if (ModalRoute.of(context)?.isCurrent == true && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -57,21 +60,24 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
     super.dispose();
   }
 
-  Widget _buildHintChip(String text) {
-    return Container(
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(20),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withAlpha(40)),
-      ),
-      child: Center(
-        child: Text(
-          text,
-          style: GoogleFonts.montserrat(
-            color: Colors.white70,
-            fontSize: 14,
+  Widget _buildHintChip(String text, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(20),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withAlpha(40)),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: GoogleFonts.montserrat(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
           ),
         ),
       ),
@@ -95,14 +101,14 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
           height: double.infinity,
           color: Colors.black.withAlpha(220),
           child: AnimatedBuilder(
-            animation: VoiceAssistantService.instance.state,
+            animation: Listenable.merge([VoiceAssistantService.instance.state, VoiceAssistantService.instance.soundLevel]),
             builder: (context, child) {
               final state = VoiceAssistantService.instance.state.value;
 
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Mic icon with pulse
+                  // Mic icon with sound level pulse
                   AnimatedBuilder(
                     animation: _pulseController,
                     builder: (context, child) {
@@ -111,7 +117,10 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
                       final isSpeaking = state == VoiceState.speaking;
                       final isError = state == VoiceState.error;
 
-                      final scale = isListening ? 1.0 + (_pulseController.value * 0.2) : 1.0;
+                      // Normalize sound level from STT (-50 to 10 dB roughly)
+                      final level = VoiceAssistantService.instance.soundLevel.value;
+                      final normalizedLevel = ((level + 50) / 60).clamp(0.0, 1.0);
+                      final scale = isListening ? 1.0 + (normalizedLevel * 0.4) + (_pulseController.value * 0.1) : 1.0;
 
                       return Transform.scale(
                         scale: scale,
@@ -126,7 +135,7 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
                                 BoxShadow(
                                   color: Colors.redAccent.withAlpha(80),
                                   blurRadius: 40,
-                                  spreadRadius: 20 * _pulseController.value,
+                                  spreadRadius: 20 * scale,
                                 ),
                             ],
                           ),
@@ -158,7 +167,7 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
                       builder: (context, text, child) {
                         String displayText = text;
                         if (state == VoiceState.processing) displayText = "Processing...";
-                        if (state == VoiceState.error) displayText = "Error occurred";
+                        if (state == VoiceState.error) displayText = "Sorry, I didn't get that.";
                         if (state == VoiceState.listening && text.isEmpty) displayText = "Listening...";
 
                         return Text(
@@ -196,7 +205,21 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
                       ),
                     ),
                     
-                  if (state == VoiceState.listening)
+                  if (state == VoiceState.error)
+                    AnimatedOpacity(
+                      opacity: 1.0,
+                      duration: const Duration(milliseconds: 300),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildHintChip("Try again", onTap: () {
+                            VoiceAssistantService.instance.startListening();
+                          }),
+                        ],
+                      ),
+                    ),
+
+                  if (state == VoiceState.listening || state == VoiceState.error)
                     const SizedBox(height: 40),
 
                   // Hint text

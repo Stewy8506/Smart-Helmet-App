@@ -3,9 +3,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+import 'package:helmet_app/features/settings/emergency_contacts_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature — Coming soon!'),
+        backgroundColor: const Color(0xFF1E1E1E),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,22 +71,36 @@ class SettingsScreen extends StatelessWidget {
                     _SettingsTile(
                       icon: Icons.bluetooth,
                       title: "Device Connection",
+                      onTap: () => _showComingSoon(context, "Device Connection"),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyContactsScreen()));
+                      },
+                      child: const _SettingsTile(
+                        icon: Icons.emergency,
+                        title: "Emergency Contacts",
+                      ),
                     ),
                     _SettingsTile(
                       icon: Icons.music_note,
                       title: "Music Preferences",
+                      onTap: () => _showComingSoon(context, "Music Preferences"),
                     ),
                     _SettingsTile(
                       icon: Icons.map,
                       title: "Navigation Settings",
+                      onTap: () => _showComingSoon(context, "Navigation Settings"),
                     ),
                     _SettingsTile(
                       icon: Icons.notifications,
                       title: "Notifications",
+                      onTap: () => _showComingSoon(context, "Notifications"),
                     ),
                     _SettingsTile(
                       icon: Icons.security,
                       title: "Privacy & Security",
+                      onTap: () => _showComingSoon(context, "Privacy & Security"),
                     ),
                   ],
                 ),
@@ -100,34 +126,38 @@ class SettingsScreen extends StatelessWidget {
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
+  final VoidCallback? onTap;
 
-  const _SettingsTile({required this.icon, required this.title});
+  const _SettingsTile({required this.icon, required this.title, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(25),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: Colors.white70),
-            const SizedBox(width: 14),
-            Text(
-              title,
-              style: GoogleFonts.montserrat(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(25),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white70),
+              const SizedBox(width: 14),
+              Text(
+                title,
+                style: GoogleFonts.montserrat(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            const Spacer(),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 16),
-          ],
+              const Spacer(),
+              const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 16),
+            ],
+          ),
         ),
       ),
     );

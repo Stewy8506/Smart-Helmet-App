@@ -96,17 +96,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                 onPressed: isLoading
                                     ? null
                                     : () async {
+                                        final messenger = ScaffoldMessenger.of(context);
+                                        final nav = Navigator.of(context);
                                         if (emailController.text.isEmpty ||
                                             passwordController.text.isEmpty ||
                                             confirmPasswordController.text.isEmpty) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          messenger.showSnackBar(
                                             const SnackBar(content: Text("Fill all fields")),
                                           );
                                           return;
                                         }
 
                                         if (passwordController.text != confirmPasswordController.text) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          messenger.showSnackBar(
                                             const SnackBar(content: Text("Passwords do not match")),
                                           );
                                           return;
@@ -120,13 +122,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                                         if (!mounted) return;
 
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        messenger.showSnackBar(
                                           const SnackBar(
                                             content: Text("Account created (placeholder)"),
                                           ),
                                         );
 
-                                        Navigator.pop(context);
+                                        nav.pop();
                                       },
                                 child: isLoading
                                     ? const SizedBox(
