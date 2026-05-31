@@ -1,7 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:telephony/telephony.dart';
 import 'package:helmet_app/features/settings/settings_service.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
 
 class SosService {
   static final SosService instance = SosService._internal();
@@ -26,35 +25,26 @@ class SosService {
     String locationLink = "Location unavailable";
     try {
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
       locationLink = "https://maps.google.com/?q=${pos.latitude},${pos.longitude}";
     } catch (e) {
-      // ignore
+      // ignore — send without location
     }
 
-    final message = "EMERGENCY: I may have been in a crash. Here is my last known location: $locationLink";
+    final message =
+        "EMERGENCY: I may have been in a crash. Here is my last known location: $locationLink";
 
-    final contactNames = SettingsService.instance.emergencyContactNames;
-    if (contactNames.isEmpty) return;
+    // Use stored phone numbers directly — no contact lookup needed
+    final phones = SettingsService.instance.emergencyContactPhones;
+    if (phones.isEmpty) return;
 
-    final permission = await FlutterContacts.permissions.request(PermissionType.read);
-    if (permission == PermissionStatus.granted) {
-      final allContacts = await FlutterContacts.getAll(properties: {ContactProperty.name, ContactProperty.phone});
-      
-      for (final name in contactNames) {
-        try {
-          final c = allContacts.firstWhere((element) => element.displayName == name);
-          if (c.phones.isNotEmpty) {
-            final number = c.phones.first.number;
-            await telephony.sendSms(
-              to: number,
-              message: message,
-            );
-          }
-        } catch (e) {
-          // ignore
-        }
+    for (final number in phones) {
+      if (number.isEmpty) continue;
+      try {
+        await telephony.sendSms(to: number, message: message);
+      } catch (e) {
+        // ignore individual send failure, attempt the rest
       }
     }
   }

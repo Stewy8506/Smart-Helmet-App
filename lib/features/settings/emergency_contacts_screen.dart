@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:helmet_app/features/settings/settings_service.dart';
 
@@ -11,7 +12,7 @@ class EmergencyContactsScreen extends StatefulWidget {
 
 class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   List<Contact> _allContacts = [];
-  List<String> _selectedNames = [];
+  List<WhitelistContact> _selected = [];
   bool _isLoading = true;
 
   @override
@@ -21,64 +22,183 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   }
 
   Future<void> _loadData() async {
-    _selectedNames = SettingsService.instance.emergencyContactNames.toList();
+    _selected = SettingsService.instance.contactWhitelist.toList();
 
-    // Use permission_handler if needed, but grid_screen uses this:
     final permission = await FlutterContacts.permissions.request(PermissionType.read);
     if (permission == PermissionStatus.granted) {
       _allContacts = await FlutterContacts.getAll(
         properties: {ContactProperty.name, ContactProperty.phone},
       );
     }
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) setState(() => _isLoading = false);
   }
 
-  void _toggleContact(String name) async {
-    if (_selectedNames.contains(name)) {
-      _selectedNames.remove(name);
-    } else {
-      _selectedNames.add(name);
-    }
-    await SettingsService.instance.setEmergencyContactNames(_selectedNames);
-    setState(() {});
+  bool _isSelected(Contact contact) {
+    final phone = contact.phones.isNotEmpty
+        ? _normalize(contact.phones.first.number)
+        : '';
+    return _selected.any((c) => _normalize(c.phone) == phone);
   }
+
+  void _toggle(Contact contact) async {
+    if (contact.phones.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This contact has no phone number.')),
+      );
+      return;
+    }
+
+    final phone = _normalize(contact.phones.first.number);
+    final name = contact.displayName ?? 'Unknown';
+
+    if (_isSelected(contact)) {
+      _selected.removeWhere((c) => _normalize(c.phone) == phone);
+    } else {
+      _selected.add(WhitelistContact(name: name, phone: contact.phones.first.number));
+    }
+
+    await SettingsService.instance.setContactWhitelist(_selected);
+    if (mounted) setState(() {});
+  }
+
+  String _normalize(String phone) =>
+      phone.replaceAll(RegExp(r'[\s\-\(\)\+]'), '');
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F0F0F),
       appBar: AppBar(
-        title: const Text('Emergency Contacts', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'Emergency Contacts',
+          style: GoogleFonts.montserrat(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          if (_selected.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withAlpha(180),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_selected.length} selected',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _allContacts.length,
-              itemBuilder: (context, index) {
-                final contact = _allContacts[index];
-                final name = contact.displayName ?? 'Unknown';
-                final isSelected = _selectedNames.contains(name);
+          ? const Center(child: CircularProgressIndicator(color: Colors.redAccent))
+          : _allContacts.isEmpty
+              ? _buildEmptyState('No contacts found.\nPlease grant contacts permission in Settings.')
+              : Column(
+                  children: [
+                    if (_selected.isEmpty)
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withAlpha(40),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.redAccent.withAlpha(80)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'No contacts selected. Select contacts who will receive your crash SOS alert.',
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.redAccent,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _allContacts.length,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemBuilder: (context, index) {
+                          final contact = _allContacts[index];
+                          final selected = _isSelected(contact);
+                          final phone = contact.phones.isNotEmpty
+                              ? contact.phones.first.number
+                              : null;
 
-                return ListTile(
-                  title: Text(name, style: const TextStyle(color: Colors.white)),
-                  subtitle: Text(
-                    contact.phones.isNotEmpty ? contact.phones.first.number : 'No number',
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                  trailing: Checkbox(
-                    value: isSelected,
-                    onChanged: (val) => _toggleContact(name),
-                    activeColor: Colors.blueAccent,
-                  ),
-                  onTap: () => _toggleContact(name),
-                );
-              },
-            ),
+                          return ListTile(
+                            onTap: () => _toggle(contact),
+                            leading: CircleAvatar(
+                              backgroundColor: selected
+                                  ? Colors.redAccent.withAlpha(180)
+                                  : Colors.white10,
+                              child: Text(
+                                (contact.displayName ?? '?').isNotEmpty
+                                    ? (contact.displayName ?? '?')[0].toUpperCase()
+                                    : '?',
+                                style: GoogleFonts.montserrat(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              contact.displayName ?? 'Unknown',
+                              style: GoogleFonts.montserrat(color: Colors.white),
+                            ),
+                            subtitle: Text(
+                              phone ?? 'No number',
+                              style: GoogleFonts.montserrat(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            ),
+                            trailing: Checkbox(
+                              value: selected,
+                              onChanged: phone != null ? (_) => _toggle(contact) : null,
+                              activeColor: Colors.redAccent,
+                              checkColor: Colors.white,
+                              side: const BorderSide(color: Colors.white38),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.contacts_outlined, size: 64, color: Colors.white24),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.montserrat(color: Colors.white38, fontSize: 14),
+          ),
+        ],
+      ),
     );
   }
 }

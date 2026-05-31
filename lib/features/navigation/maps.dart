@@ -12,6 +12,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 import 'package:helmet_app/features/voice_assistant/voice_assistant_service.dart';
+import 'package:helmet_app/features/profile/profile.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
@@ -805,8 +806,12 @@ class _MapsScreenState extends State<MapsScreen> {
                                                   child: _AnimatedAvatarButton(
                                                     borderRadius: 24,
                                                     onTap: () {
-                                                      // You can navigate to profile or settings later
-                                                      debugPrint("Avatar tapped");
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) => const ProfileScreen(),
+                                                        ),
+                                                      );
                                                     },
                                                     child: const Icon(
                                                       Icons.person,

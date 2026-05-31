@@ -210,7 +210,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               const _StatItem(
                                 icon: Icons.route,
-                                label: "11.5",
+                                label: "—",
                                 sub: "Kilometers",
                               ),
                               _StatItem(

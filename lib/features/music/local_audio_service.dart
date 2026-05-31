@@ -62,11 +62,9 @@ class LocalAudioService {
     );
 
     if (_songs.isNotEmpty) {
-      final playlist = ConcatenatingAudioSource(
-        children: _songs.map((song) => AudioSource.uri(Uri.parse(song.data))).toList(),
+      await _player.setAudioSources(
+        _songs.map((song) => AudioSource.uri(Uri.parse(song.data))).toList(),
       );
-      
-      await _player.setAudioSource(playlist);
       _isInitialized = true;
 
       // Restore last played index

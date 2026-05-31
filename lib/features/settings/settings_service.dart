@@ -1,4 +1,26 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// A single whitelisted contact entry (name + phone number).
+class WhitelistContact {
+  final String name;
+  final String phone;
+
+  const WhitelistContact({required this.name, required this.phone});
+
+  Map<String, String> toMap() => {'name': name, 'phone': phone};
+
+  factory WhitelistContact.fromMap(Map<String, dynamic> map) {
+    return WhitelistContact(
+      name: map['name'] as String? ?? '',
+      phone: map['phone'] as String? ?? '',
+    );
+  }
+
+  String toJson() => jsonEncode(toMap());
+  factory WhitelistContact.fromJson(String json) =>
+      WhitelistContact.fromMap(jsonDecode(json) as Map<String, dynamic>);
+}
 
 class SettingsService {
   static final SettingsService instance = SettingsService._internal();
@@ -12,7 +34,7 @@ class SettingsService {
   }
 
   // Profile
-  String get userName => _prefs?.getString('user_name') ?? 'Anuvab Das';
+  String get userName => _prefs?.getString('user_name') ?? 'Rider';
   Future<void> setUserName(String name) async {
     await _prefs?.setString('user_name', name);
   }
@@ -22,17 +44,34 @@ class SettingsService {
     await _prefs?.setString('user_subtitle', subtitle);
   }
 
-  // Contacts
-  List<String> get emergencyContactNames {
-    final list = _prefs?.getStringList('emergency_contacts');
-    if (list == null || list.isEmpty) {
-      // Default mock fallback until user configures
-      return ["Sreyashi", "Sagnik RCCIIT", "Anwita", "Subhrodip RCCIIT", "mum"];
-    }
-    return list;
+  // --- Contact Whitelist (stored by name + phone number) ---
+
+  /// Returns the full whitelist entries with name and phone.
+  List<WhitelistContact> get contactWhitelist {
+    final list = _prefs?.getStringList('contact_whitelist_v2');
+    if (list == null || list.isEmpty) return [];
+    return list
+        .map((e) {
+          try {
+            return WhitelistContact.fromJson(e);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<WhitelistContact>()
+        .toList();
   }
 
-  Future<void> setEmergencyContactNames(List<String> names) async {
-    await _prefs?.setStringList('emergency_contacts', names);
+  Future<void> setContactWhitelist(List<WhitelistContact> contacts) async {
+    final jsonList = contacts.map((c) => c.toJson()).toList();
+    await _prefs?.setStringList('contact_whitelist_v2', jsonList);
   }
+
+  /// Convenience: just the display names for UI use.
+  List<String> get emergencyContactNames =>
+      contactWhitelist.map((c) => c.name).toList();
+
+  /// Convenience: just the phone numbers for SMS dispatch.
+  List<String> get emergencyContactPhones =>
+      contactWhitelist.map((c) => c.phone).toList();
 }

@@ -1,9 +1,9 @@
 import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:helmet_app/features/music/local_audio_service.dart';
-
-import 'package:flutter/material.dart';
 import 'package:helmet_app/common/sizes.dart';
 import 'package:helmet_app/features/navigation/maps.dart';
 import 'package:helmet_app/features/dashboard/dashboard.dart';
@@ -11,7 +11,6 @@ import 'package:helmet_app/features/navigation/util/background.dart';
 import 'package:helmet_app/features/profile/profile.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 import 'package:helmet_app/features/settings/settings_service.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -164,64 +163,51 @@ class _CallsWidgetState extends State<_CallsWidget> {
     _loadContacts();
   }
 
-  Future<void> _loadContacts() async {
-    final permission = await FlutterContacts.permissions.request(PermissionType.read);
+  String _normalizePhone(String phone) =>
+      phone.replaceAll(RegExp(r'[\s\-\(\)\+]'), '');
 
-    if (permission != PermissionStatus.granted) {
+  Future<void> _loadContacts() async {
+    final whitelist = SettingsService.instance.contactWhitelist;
+    if (whitelist.isEmpty) {
+      // No contacts configured — show empty state without requesting permissions
+      if (mounted) setState(() {});
       return;
     }
+
+    final permission = await FlutterContacts.permissions.request(PermissionType.read);
+    if (permission != PermissionStatus.granted) return;
 
     final fetched = await FlutterContacts.getAll(
       properties: {ContactProperty.name, ContactProperty.phone, ContactProperty.photoThumbnail},
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    final allowedNames = SettingsService.instance.emergencyContactNames;
-
-    final priorityOrder = allowedNames.isNotEmpty ? [allowedNames.first] : <String>[];
+    // Match by normalized phone number — reliable even if names differ
+    final allowedPhones = whitelist.map((c) => _normalizePhone(c.phone)).toSet();
 
     setState(() {
-      contacts =
-          fetched
-              .where((c) => (c.displayName ?? "").trim().isNotEmpty)
-              .where(
-                (c) => allowedNames.any(
-                  (name) =>
-                      (c.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
-                ),
-              )
-              .toList()
-            ..sort((a, b) {
-              int aIndex = priorityOrder.indexWhere(
-                (name) =>
-                    (a.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
-              );
-              int bIndex = priorityOrder.indexWhere(
-                (name) =>
-                    (b.displayName ?? "").trim().toLowerCase() == name.toLowerCase(),
-              );
-
-              if (aIndex == -1) aIndex = 999;
-              if (bIndex == -1) bIndex = 999;
-
-              return aIndex.compareTo(bIndex);
-            });
+      contacts = fetched
+          .where((c) => c.phones.isNotEmpty)
+          .where((c) => allowedPhones.contains(_normalizePhone(c.phones.first.number)))
+          .toList();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final whitelist = SettingsService.instance.contactWhitelist;
     if (contacts.isEmpty) {
       return SizedBox(
         width: widget.width,
         height: widget.height,
-        child: const Center(
+        child: Center(
           child: Text(
-            "No contacts found",
-            style: TextStyle(color: Colors.white54),
+            whitelist.isEmpty
+                ? "Add contacts in\nSettings → Emergency Contacts"
+                : "No matching contacts found",
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
           ),
         ),
       );

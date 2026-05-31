@@ -62,11 +62,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             TextButton(
               onPressed: () async {
+                final nav = Navigator.of(context);
                 await SettingsService.instance.setUserName(nameController.text);
                 await SettingsService.instance.setUserSubtitle(subController.text);
                 if (mounted) {
                   setState(() {});
-                  Navigator.pop(context);
+                  nav.pop();
                 }
               },
               child: const Text('Save', style: TextStyle(color: Colors.blueAccent)),
@@ -181,9 +182,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: const [
-                            _ProfileStat(label: "124", sub: "Trips"),
-                            _ProfileStat(label: "1.2k", sub: "KM"),
-                            _ProfileStat(label: "87%", sub: "Safety"),
+                            _ProfileStat(label: "—", sub: "Trips"),
+                            _ProfileStat(label: "—", sub: "KM"),
+                            _ProfileStat(label: "—", sub: "Safety"),
                           ],
                         ),
 
@@ -209,7 +210,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.lightImpact();
-                // TODO: handle logout
+                // Navigate back to dashboard (auth will handle proper logout later)
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                  (route) => false,
+                );
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),

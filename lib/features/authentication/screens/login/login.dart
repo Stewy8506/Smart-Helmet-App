@@ -127,10 +127,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                     borderRadius: BorderRadius.circular(14),
                                   ),
                                 ),
-                                onPressed: isLoading
+                                 onPressed: isLoading
                                     ? null
                                     : () async {
                                         final messenger = ScaffoldMessenger.of(context);
+                                        final nav = Navigator.of(context);
 
                                         if (emailController.text.isEmpty || passwordController.text.isEmpty) {
                                           messenger.showSnackBar(
@@ -147,8 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                         setState(() => isLoading = false);
 
-                                        Navigator.pushReplacement(
-                                          context,
+                                        nav.pushReplacement(
                                           MaterialPageRoute(
                                             builder: (context) => const GridScreen(),
                                           ),
