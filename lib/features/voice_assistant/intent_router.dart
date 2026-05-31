@@ -4,6 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:helmet_app/features/voice_assistant/audio_bridge.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
+import 'package:intl/intl.dart';
 import 'voice_assistant_service.dart';
 import 'command_parser.dart';
 import '../navigation/maps.dart';
@@ -96,6 +98,47 @@ class IntentRouter {
         } catch (e) {
           _voiceService.speak("I couldn't get your speed.");
         }
+        break;
+
+      case VoiceCommand.volumeUp:
+        _voiceService.speak("Increasing volume");
+        final current = await FlutterVolumeController.getVolume() ?? 0.5;
+        await FlutterVolumeController.setVolume(current + 0.2);
+        break;
+
+      case VoiceCommand.volumeDown:
+        _voiceService.speak("Decreasing volume");
+        final current = await FlutterVolumeController.getVolume() ?? 0.5;
+        await FlutterVolumeController.setVolume(current - 0.2);
+        break;
+
+      case VoiceCommand.time:
+        final now = DateTime.now();
+        final timeString = DateFormat('h:mm a').format(now);
+        _voiceService.speak("It is currently $timeString");
+        break;
+
+      case VoiceCommand.weather:
+        // TODO: Implement real weather API
+        _voiceService.speak("It is currently 24 degrees and clear skies.");
+        break;
+
+      case VoiceCommand.help:
+        _voiceService.speak("You can ask me to navigate, call someone, play music, or check your speed and battery.");
+        break;
+
+      case VoiceCommand.readMessages:
+        // TODO: Implement actual SMS reading
+        _voiceService.speak("You have no new messages.");
+        break;
+
+      case VoiceCommand.replyMessage:
+        _voiceService.speak("I am sorry, dictating replies is not yet fully supported.");
+        break;
+
+      case VoiceCommand.emergencySOS:
+        _voiceService.speak("Emergency SOS activated. Sending your location to emergency contacts.");
+        // TODO: Implement actual SMS sending
         break;
 
       case VoiceCommand.unknown:

@@ -7,6 +7,14 @@ enum VoiceCommand {
   previousTrack,
   batteryStatus,
   speed,
+  volumeUp,
+  volumeDown,
+  time,
+  weather,
+  help,
+  readMessages,
+  replyMessage,
+  emergencySOS,
   unknown,
 }
 
@@ -26,73 +34,79 @@ class CommandParser {
   static VoiceIntent parse(String rawText) {
     final text = rawText.trim().toLowerCase();
 
-    // Navigation
-    if (text.startsWith('navigate to ') ||
-        text.startsWith('take me to ') ||
-        text.startsWith('directions to ') ||
-        text.startsWith('go to ')) {
-      String place = '';
-      if (text.startsWith('navigate to ')) {
-        place = text.substring('navigate to '.length);
-      } else if (text.startsWith('take me to ')) {
-        place = text.substring('take me to '.length);
-      } else if (text.startsWith('directions to ')) {
-        place = text.substring('directions to '.length);
-      } else if (text.startsWith('go to ')) {
-        place = text.substring('go to '.length);
-      }
-      
-      if (place.isNotEmpty) {
-        return VoiceIntent(
-          command: VoiceCommand.navigate,
-          params: {'place': place.trim()},
-          rawText: rawText,
-        );
-      }
+    // 1. Emergency (highest priority)
+    if (RegExp(r'\b(emergency|help me|sos|crash)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.emergencySOS, rawText: rawText);
     }
 
-    // Call
-    if (text.startsWith('call ') ||
-        text.startsWith('phone ') ||
-        text.startsWith('dial ')) {
-      String name = '';
-      if (text.startsWith('call ')) {
-        name = text.substring('call '.length);
-      } else if (text.startsWith('phone ')) {
-        name = text.substring('phone '.length);
-      } else if (text.startsWith('dial ')) {
-        name = text.substring('dial '.length);
-      }
-      
-      if (name.isNotEmpty) {
-        return VoiceIntent(
-          command: VoiceCommand.call,
-          params: {'name': name.trim()},
-          rawText: rawText,
-        );
-      }
+    // 2. Navigation (Regex extraction)
+    final navMatch = RegExp(r'\b(?:navigate(?: me)?|take me|directions|go)\s+to\s+(.+)\b').firstMatch(text);
+    if (navMatch != null && navMatch.group(1) != null) {
+      return VoiceIntent(
+        command: VoiceCommand.navigate,
+        params: {'place': navMatch.group(1)!.trim()},
+        rawText: rawText,
+      );
     }
 
-    // Music control
-    if (text == 'play music' || text == 'resume music' || text == 'play' || text == 'resume') {
+    // 3. Calling (Regex extraction)
+    final callMatch = RegExp(r'\b(?:call|phone|dial)\s+(.+)\b').firstMatch(text);
+    if (callMatch != null && callMatch.group(1) != null) {
+      return VoiceIntent(
+        command: VoiceCommand.call,
+        params: {'name': callMatch.group(1)!.trim()},
+        rawText: rawText,
+      );
+    }
+
+    // 4. Messaging
+    if (RegExp(r'\b(?:read(?: my)? messages?|any new messages?)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.readMessages, rawText: rawText);
+    }
+    final replyMatch = RegExp(r'\b(?:reply|send(?: a)? message)\s+to\s+(.+)\b').firstMatch(text);
+    if (replyMatch != null && replyMatch.group(1) != null) {
+      return VoiceIntent(
+        command: VoiceCommand.replyMessage,
+        params: {'name': replyMatch.group(1)!.trim()},
+        rawText: rawText,
+      );
+    }
+
+    // 5. Music Controls
+    if (RegExp(r'\b(play(?: music)?|resume(?: playback)?|start playing|put on music)\b').hasMatch(text)) {
       return VoiceIntent(command: VoiceCommand.playMusic, rawText: rawText);
     }
-    if (text == 'pause music' || text == 'stop music' || text == 'pause' || text == 'stop') {
+    if (RegExp(r'\b(pause(?: music)?|stop(?: music)?|halt|hold on)\b').hasMatch(text)) {
       return VoiceIntent(command: VoiceCommand.pauseMusic, rawText: rawText);
     }
-    if (text == 'next song' || text == 'skip' || text == 'next track' || text == 'next') {
+    if (RegExp(r'\b(next(?: song| track)?|skip)\b').hasMatch(text)) {
       return VoiceIntent(command: VoiceCommand.nextTrack, rawText: rawText);
     }
-    if (text == 'previous song' || text == 'go back' || text == 'previous track' || text == 'previous') {
+    if (RegExp(r'\b(previous(?: song| track)?|go back)\b').hasMatch(text)) {
       return VoiceIntent(command: VoiceCommand.previousTrack, rawText: rawText);
     }
 
-    // Status
-    if (text.contains('battery status') || text.contains('battery level') || text.contains('how much battery') || text == 'battery') {
+    // 6. System & Status
+    if (RegExp(r'\b(battery(?: status| level)?|how much battery)\b').hasMatch(text)) {
       return VoiceIntent(command: VoiceCommand.batteryStatus, rawText: rawText);
     }
-    if (text.contains('how fast') || text.contains('current speed') || text.contains("what's my speed") || text == 'speed') {
+    if (RegExp(r'\b(speed|how fast|current speed|what\x27s my speed)\b').hasMatch(text)) {
       return VoiceIntent(command: VoiceCommand.speed, rawText: rawText);
+    }
+    if (RegExp(r'\b(volume up|louder|increase volume)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.volumeUp, rawText: rawText);
+    }
+    if (RegExp(r'\b(volume down|quieter|decrease volume)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.volumeDown, rawText: rawText);
+    }
+    if (RegExp(r'\b(time|what time is it|current time)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.time, rawText: rawText);
+    }
+    if (RegExp(r'\b(weather|is it raining|weather report)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.weather, rawText: rawText);
+    }
+    if (RegExp(r'\b(help|what can you do|commands)\b').hasMatch(text)) {
+      return VoiceIntent(command: VoiceCommand.help, rawText: rawText);
     }
 
     // Unknown

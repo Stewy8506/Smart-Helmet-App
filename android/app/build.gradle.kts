@@ -38,10 +38,7 @@ android {
         versionName = flutter.versionName
 
         manifestPlaceholders += mapOf(
-            "GOOGLE_MAPS_API_KEY" to (envProps.getProperty("GOOGLE_MAPS_API_KEY") ?: ""),
-            "SPOTIFY_CLIENT_ID" to (envProps.getProperty("SPOTIFY_CLIENT_ID") ?: ""),
-            "redirectSchemeName" to "helmetapp",
-            "redirectHostName" to "callback"
+            "GOOGLE_MAPS_API_KEY" to (envProps.getProperty("GOOGLE_MAPS_API_KEY") ?: "")
         )
     }
 
