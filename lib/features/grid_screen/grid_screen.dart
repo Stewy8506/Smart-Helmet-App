@@ -12,6 +12,8 @@ import 'package:helmet_app/features/profile/profile.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
+import 'package:helmet_app/features/settings/settings.dart';
+import 'package:helmet_app/features/settings/settings_service.dart';
 import 'package:helmet_app/features/voice_assistant/widgets/voice_fab.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -178,15 +180,9 @@ class _CallsWidgetState extends State<_CallsWidget> {
       return;
     }
 
-    final allowedNames = [
-      "Sreyashi",
-      "Sagnik RCCIIT",
-      "Anwita",
-      "Subhrodip RCCIIT",
-      "mum",
-    ];
+    final allowedNames = SettingsService.instance.emergencyContactNames;
 
-    final priorityOrder = ["Sreyashi"];
+    final priorityOrder = allowedNames.isNotEmpty ? [allowedNames.first] : <String>[];
 
     setState(() {
       contacts =

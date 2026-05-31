@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+import 'package:helmet_app/features/settings/emergency_contacts_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -60,7 +61,16 @@ class SettingsScreen extends StatelessWidget {
                       icon: Icons.bluetooth,
                       title: "Device Connection",
                     ),
-                    _SettingsTile(
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const EmergencyContactsScreen()));
+                      },
+                      child: const _SettingsTile(
+                        icon: Icons.emergency,
+                        title: "Emergency Contacts",
+                      ),
+                    ),
+                    const _SettingsTile(
                       icon: Icons.music_note,
                       title: "Music Preferences",
                     ),

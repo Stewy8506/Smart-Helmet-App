@@ -16,6 +16,7 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
   late Animation<double> _scaleAnimation;
   
   bool _isPressed = false;
+  bool _isOverlayShowing = false;
 
   @override
   void initState() {
@@ -39,6 +40,21 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
       if (!_pulseController.isAnimating) {
         _pulseController.repeat(reverse: true);
       }
+      if (!_isOverlayShowing) {
+        _isOverlayShowing = true;
+        showGeneralDialog(
+          context: context,
+          barrierDismissible: true,
+          barrierLabel: "VoiceOverlay",
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return const VoiceOverlay();
+          },
+        ).then((_) {
+          if (mounted) {
+            _isOverlayShowing = false;
+          }
+        });
+      }
     } else {
       _pulseController.stop();
       _pulseController.value = 0.0;
@@ -60,14 +76,7 @@ class _VoiceFABState extends State<VoiceFAB> with SingleTickerProviderStateMixin
       service.resetToIdle();
     } else {
       service.startListening();
-      showGeneralDialog(
-        context: context,
-        barrierDismissible: true,
-        barrierLabel: "VoiceOverlay",
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return const VoiceOverlay();
-        },
-      );
+      // Overlay is now automatically shown by _onStateChange
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'wake_word_service.dart';
 
 enum VoiceState { idle, listening, processing, speaking, error }
 
@@ -72,6 +73,11 @@ class VoiceAssistantService {
       }
     }
 
+    // Ensure wake word service gives up the mic
+    WakeWordService.instance.pause();
+    // Wait briefly to allow OS to release the microphone lock
+    await Future.delayed(const Duration(milliseconds: 300));
+
     state.value = VoiceState.listening;
     recognizedText.value = '';
 
@@ -120,6 +126,7 @@ class VoiceAssistantService {
     _expectingFollowUp = false;
     _silenceTimer?.cancel();
     _processingTimer?.cancel();
+    WakeWordService.instance.resume();
   }
 
   Future<void> speak(String text, {bool expectFollowUp = false}) async {
@@ -128,7 +135,7 @@ class VoiceAssistantService {
     
     // Adaptive TTS based on speed
     try {
-      final pos = await Geolocator.getLastKnownPosition();
+      final pos = await Geolocator.getLastKnownPosition().timeout(const Duration(milliseconds: 200));
       if (pos != null) {
         final speedKmh = pos.speed * 3.6;
         if (speedKmh > 80) {
@@ -145,7 +152,11 @@ class VoiceAssistantService {
         await _tts.setVolume(0.8);
         await _tts.setSpeechRate(0.5);
       }
-    } catch (_) {}
+    } catch (_) {
+      // Fallback if timeout or no permission
+      await _tts.setVolume(0.8);
+      await _tts.setSpeechRate(0.5);
+    }
 
     state.value = VoiceState.speaking;
     await _tts.speak(text);

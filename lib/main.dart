@@ -7,6 +7,7 @@ import 'package:helmet_app/features/navigation/maps.dart';
 import 'package:helmet_app/features/grid_screen/grid_screen.dart';
 import 'package:helmet_app/features/music/local_audio_service.dart';
 import 'package:helmet_app/features/voice_assistant/wake_word_service.dart';
+import 'package:helmet_app/features/settings/settings_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +20,9 @@ Future<void> main() async {
   // Initialize background wake word listener
   await WakeWordService.instance.initialize();
   await WakeWordService.instance.startListening();
+
+  // Initialize Settings
+  await SettingsService.instance.init();
   
   runApp(
     const ProviderScope(

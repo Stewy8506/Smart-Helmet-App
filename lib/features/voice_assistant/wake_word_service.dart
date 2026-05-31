@@ -10,6 +10,7 @@ class WakeWordService {
   final SpeechToText _stt = SpeechToText();
   bool _isListening = false;
   bool _isInitialized = false;
+  bool _isPaused = false;
   Timer? _restartTimer;
 
   Future<void> initialize() async {
@@ -41,10 +42,23 @@ class WakeWordService {
   Future<void> startListening() async {
     if (!_isInitialized) await initialize();
     _isListening = true;
+    _isPaused = false;
     _startInternal();
   }
 
+  void pause() {
+    _isPaused = true;
+    stopListening();
+  }
+
+  void resume() {
+    _isPaused = false;
+    startListening();
+  }
+
   void _startInternal() {
+    if (_isPaused) return;
+
     // Yield the microphone if the main voice assistant is currently active
     if (VoiceAssistantService.instance.state.value != VoiceState.idle) {
       _scheduleRestart();
@@ -52,11 +66,13 @@ class WakeWordService {
     }
 
     _stt.listen(
-      onResult: (result) {
+      onResult: (result) async {
         final text = result.recognizedWords.toLowerCase();
-        if (text.contains('hey helmet') || text.contains('hello helmet') || text.contains('helmet')) {
+        if (text.contains('hey helmet') || text.contains('hello helmet')) {
           debugPrint("Wake word detected: $text");
-          _stt.stop();
+          pause(); // Pause wake word service
+          await _stt.stop();
+          await Future.delayed(const Duration(milliseconds: 300)); // Let mic release
           // Trigger the main voice assistant!
           VoiceAssistantService.instance.startListening();
         }

@@ -15,6 +15,7 @@ class VoiceOverlay extends StatefulWidget {
 class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late IntentRouter _router;
+  bool _isExecuting = false;
 
   @override
   void initState() {
@@ -29,25 +30,27 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
   }
 
   void _onStateChange() async {
-    if (!mounted) return;
+    if (!mounted || _isExecuting) return;
     final state = VoiceAssistantService.instance.state.value;
 
     if (state == VoiceState.processing) {
+      _isExecuting = true;
       final rawText = VoiceAssistantService.instance.recognizedText.value;
       if (rawText.isNotEmpty) {
         final intent = CommandParser.parse(rawText);
         // Execute the intent
         await _router.execute(intent, context);
       } else {
-        VoiceAssistantService.instance.speak("I didn't catch that");
+        await VoiceAssistantService.instance.speak("I didn't catch that");
       }
+      _isExecuting = false;
     } else if (state == VoiceState.idle) {
       // Auto-dismiss when back to idle
-      if (Navigator.canPop(context)) {
+      if (ModalRoute.of(context)?.isCurrent == true && Navigator.canPop(context)) {
         Navigator.pop(context);
       }
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override

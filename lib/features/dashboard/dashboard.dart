@@ -5,8 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:ui' as ui;
 
 import 'package:helmet_app/common/sizes.dart';
@@ -40,118 +39,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   GoogleMapController? _mapController;
   final Set<Polyline> _polylines = {};
 
-  Future<BitmapDescriptor> _createBlueDotMarker() async {
-    const int size = 20;
-
-    final ui.PictureRecorder recorder = ui.PictureRecorder();
-    final Canvas canvas = Canvas(recorder);
-
-    final Paint paint = Paint()..color = const Color(0xFF2196F3);
-
-    // Draw circle
-    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, paint);
-
-    // Optional white border for visibility
-    final Paint border = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-
-    canvas.drawCircle(const Offset(size / 2, size / 2), size / 2.5, border);
-
-    final img = await recorder.endRecording().toImage(size, size);
-    final data = await img.toByteData(format: ui.ImageByteFormat.png);
-
-    return BitmapDescriptor.bytes(data!.buffer.asUint8List());
+  @override
+  void initState() {
+    super.initState();
+    _initLocation();
   }
 
-  Future<void> _loadRoute() async {
-    PolylinePoints polylinePoints = PolylinePoints(
-      apiKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-    );
+  Future<void> _initLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
 
-    RoutesApiResponse response = await polylinePoints
-        .getRouteBetweenCoordinatesV2(
-          request: RoutesApiRequest(
-            origin: PointLatLng(26.1918531, 78.1906922),
-            destination: PointLatLng(26.249564, 78.174351),
-            travelMode: TravelMode.driving,
-          ),
-        );
-
-    if (response.routes.isNotEmpty) {
-      final points = response.routes.first.polylinePoints ?? [];
-
-      List<LatLng> routePoints = points
-          .map((point) => LatLng(point.latitude, point.longitude))
-          .toList();
-
-      setState(() {
-        _polylines.clear();
-        _markers.clear();
-
-        _polylines.add(
-          Polyline(
-            polylineId: const PolylineId("real_route"),
-            color: Colors.blueAccent,
-            width: 5,
-            points: routePoints,
-          ),
-        );
-
-        if (routePoints.isNotEmpty) {
-          // Add blue dot marker for start
-          // Since this is an async call, we must await the marker creation
-          // But since we're in setState, we need to do this outside setState. So move this block outside setState.
-        }
-      });
-
-      // Add blue dot marker for start (await outside setState)
-      if (routePoints.isNotEmpty) {
-        final blueDot = await _createBlueDotMarker();
-
-        setState(() {
-          _markers.add(
-            Marker(
-              markerId: const MarkerId("start"),
-              position: routePoints.first,
-              icon: blueDot,
-              anchor: const Offset(0.5, 0.5),
-            ),
-          );
-          _markers.add(
-            Marker(
-              markerId: const MarkerId("end"),
-              position: routePoints.last,
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                BitmapDescriptor.hueRed,
-              ),
-            ),
-          );
-        });
-      }
-
-      // Fit bounds
-      if (_mapController != null && routePoints.isNotEmpty) {
-        double minLat = routePoints.first.latitude;
-        double maxLat = routePoints.first.latitude;
-        double minLng = routePoints.first.longitude;
-        double maxLng = routePoints.first.longitude;
-
-        for (var point in routePoints) {
-          if (point.latitude < minLat) minLat = point.latitude;
-          if (point.latitude > maxLat) maxLat = point.latitude;
-          if (point.longitude < minLng) minLng = point.longitude;
-          if (point.longitude > maxLng) maxLng = point.longitude;
-        }
-
-        LatLngBounds bounds = LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
-        );
-
-        _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 60));
-      }
+    final pos = await Geolocator.getCurrentPosition();
+    if (mounted && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(LatLng(pos.latitude, pos.longitude), 15),
+      );
     }
   }
 
@@ -329,11 +236,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               style: _darkMapStyle,
                               onMapCreated: (controller) {
                                 _mapController = controller;
-                                _loadRoute();
+                                _initLocation();
                               },
                               polylines: _polylines,
                               markers: _markers,
                               zoomControlsEnabled: false,
+                              myLocationEnabled: true,
                               myLocationButtonEnabled: false,
                             ),
                           ),

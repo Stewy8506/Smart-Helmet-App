@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:helmet_app/features/voice_assistant/audio_bridge.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:intl/intl.dart';
+import 'package:helmet_app/features/weather/weather_service.dart';
 import 'voice_assistant_service.dart';
 import 'command_parser.dart';
 import '../navigation/maps.dart';
@@ -100,6 +101,16 @@ class IntentRouter {
         }
         break;
 
+      case VoiceCommand.location:
+        _voiceService.speak("Fetching your location.");
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const MapsScreen(),
+          ),
+        );
+        break;
+
       case VoiceCommand.volumeUp:
         _voiceService.speak("Increasing volume");
         final current = await FlutterVolumeController.getVolume() ?? 0.5;
@@ -119,8 +130,9 @@ class IntentRouter {
         break;
 
       case VoiceCommand.weather:
-        // TODO: Implement real weather API
-        _voiceService.speak("It is currently 24 degrees and clear skies.");
+        _voiceService.speak("Checking the weather...");
+        final weatherString = await WeatherService.getCurrentWeather();
+        _voiceService.speak(weatherString);
         break;
 
       case VoiceCommand.help:
