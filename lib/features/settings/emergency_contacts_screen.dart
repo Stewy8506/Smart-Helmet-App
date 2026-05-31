@@ -14,6 +14,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   List<Contact> _allContacts = [];
   List<WhitelistContact> _selected = [];
   bool _isLoading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -66,6 +67,12 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredContacts = _allContacts.where((contact) {
+      final nameMatches = contact.displayName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+      final phoneMatches = contact.phones.any((phone) => phone.number.contains(_searchQuery));
+      return nameMatches || phoneMatches;
+    }).toList();
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F0F),
       appBar: AppBar(
@@ -106,9 +113,32 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               ? _buildEmptyState('No contacts found.\nPlease grant contacts permission in Settings.')
               : Column(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Search contacts...',
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                          filled: true,
+                          fillColor: Colors.white10,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                      ),
+                    ),
                     if (_selected.isEmpty)
                       Container(
-                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.redAccent.withAlpha(40),
@@ -132,11 +162,18 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                         ),
                       ),
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: _allContacts.length,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemBuilder: (context, index) {
-                          final contact = _allContacts[index];
+                      child: filteredContacts.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No matching contacts found',
+                                style: GoogleFonts.montserrat(color: Colors.white54),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: filteredContacts.length,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              itemBuilder: (context, index) {
+                                final contact = filteredContacts[index];
                           final selected = _isSelected(contact);
                           final phone = contact.phones.isNotEmpty
                               ? contact.phones.first.number

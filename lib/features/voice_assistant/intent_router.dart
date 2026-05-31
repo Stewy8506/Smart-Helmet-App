@@ -3,7 +3,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:helmet_app/features/voice_assistant/audio_bridge.dart';
+import 'package:helmet_app/features/spotify/spotify_service.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:helmet_app/features/weather/weather_service.dart';
@@ -83,22 +83,27 @@ class IntentRouter {
 
       case VoiceCommand.playMusic:
         _voiceService.speak("Resuming playback");
-        await AudioBridge.instance.play();
+        await SpotifyService.instance.play();
         break;
 
       case VoiceCommand.pauseMusic:
         _voiceService.speak("Pausing music");
-        await AudioBridge.instance.pause();
+        await SpotifyService.instance.pause();
         break;
 
       case VoiceCommand.nextTrack:
         _voiceService.speak("Skipping to next track");
-        await AudioBridge.instance.skipToNext();
+        await SpotifyService.instance.skipToNext();
         break;
 
       case VoiceCommand.previousTrack:
         _voiceService.speak("Going to previous track");
-        await AudioBridge.instance.skipToPrevious();
+        await SpotifyService.instance.skipToPrevious();
+        break;
+
+      case VoiceCommand.switchSpotify:
+      case VoiceCommand.switchLocal:
+        _voiceService.speak("I only play music from Spotify now.");
         break;
 
       case VoiceCommand.batteryStatus:

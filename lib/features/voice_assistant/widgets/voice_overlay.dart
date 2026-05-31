@@ -40,17 +40,44 @@ class _VoiceOverlayState extends State<VoiceOverlay> with SingleTickerProviderSt
         final intent = CommandParser.parse(rawText);
         // Execute the intent
         await _router.execute(intent, context);
+        // Wait for TTS to finish speaking, then auto-dismiss
+        _scheduleAutoDismiss();
       } else {
         await VoiceAssistantService.instance.speak("I didn't catch that");
+        _scheduleAutoDismiss();
       }
       _isExecuting = false;
     } else if (state == VoiceState.idle) {
       // Auto-dismiss when back to idle
-      if (ModalRoute.of(context)?.isCurrent == true && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+      _autoDismiss();
     }
     if (mounted) setState(() {});
+  }
+
+  void _scheduleAutoDismiss() {
+    // Listen for when TTS finishes (state goes back to idle) and then dismiss
+    void listener() {
+      if (VoiceAssistantService.instance.state.value == VoiceState.idle) {
+        VoiceAssistantService.instance.state.removeListener(listener);
+        // Small delay so user can briefly see the response
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _autoDismiss();
+        });
+      }
+    }
+    VoiceAssistantService.instance.state.addListener(listener);
+    
+    // Safety: force dismiss after 8 seconds no matter what
+    Future.delayed(const Duration(seconds: 8), () {
+      VoiceAssistantService.instance.state.removeListener(listener);
+      _autoDismiss();
+    });
+  }
+
+  void _autoDismiss() {
+    if (mounted && ModalRoute.of(context)?.isCurrent == true && Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
   @override
